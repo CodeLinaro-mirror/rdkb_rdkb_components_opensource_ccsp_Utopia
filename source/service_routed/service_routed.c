@@ -62,7 +62,7 @@
 #include "util.h"
 #include <telemetry_busmessage_sender.h>
 #include "syscfg/syscfg.h"
-#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED)
+#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 #include "utapi.h"
 #include "utapi_util.h"
 #include "ccsp_dm_api.h"
@@ -86,7 +86,7 @@ static const char* const service_routed_component_id = "ccsp.routed";
 #endif
 
 #define RA_INTERVAL 60
-#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED)
+#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 #define CCSP_SUBSYS  "eRT."
 #define PSM_VALUE_GET_STRING(name, str) PSM_Get_Record_Value2(bus_handle, CCSP_SUBSYS, name, NULL, &(str))
 static void* bus_handle = NULL;
@@ -193,7 +193,7 @@ static int fw_restart(struct serv_routed *sr)
     return 0;
 }
 
-#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED)
+#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 
 static int dbusInit( void )
 {
@@ -562,7 +562,8 @@ static int route_unset(struct serv_routed *sr)
         v_secure_system("ip -6 rule del iif %s table erouter", lan_if);
     }
 
-#elif defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_))
+#elif !defined(WAN_MANAGER_UNIFICATION_ENABLED) //Default route is configured WanManager.
+#if defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_))
     vsystem("ip -6 rule del iif brlan0 table erouter");
     if (vsystem("ip -6 route del default dev %s table erouter", wanIface) != 0) {
         return -1;
@@ -571,6 +572,9 @@ static int route_unset(struct serv_routed *sr)
     if (vsystem("ip -6 route del default dev %s table erouter"
             " && ip -6 rule del iif brlan0 table erouter", wanIface) != 0)
         return -1;
+#endif
+#else
+    vsystem("ip -6 rule del iif brlan0 table erouter");
 #endif
     return 0;
 }
@@ -1031,7 +1035,7 @@ static int gen_zebra_conf(int sefd, token_t setok)
             {
 #ifdef WAN_FAILOVER_SUPPORTED
 #ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
-                if(strcmp(current_wan_ifname, mesh_wan_ifname ) == 0)
+                if(strcmp(wan_interface, mesh_wan_ifname ) == 0)
 #else
                 if (strcmp(default_wan_interface, wan_interface) != 0)
 #endif
@@ -1103,7 +1107,7 @@ static int gen_zebra_conf(int sefd, token_t setok)
 #if !defined (_HUB4_PRODUCT_REQ_) || defined (_WNXL11BWL_PRODUCT_REQ_)
 #ifdef WAN_FAILOVER_SUPPORTED
 #ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
-                if(strcmp(current_wan_ifname, mesh_wan_ifname ) == 0)
+                if(strcmp(wan_interface, mesh_wan_ifname ) == 0)
 #else
             if (strcmp(default_wan_interface, wan_interface) != 0)
 #endif
@@ -2274,7 +2278,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
    
-#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED)
+#if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     /* dbus init based on bus handle value */
     if(bus_handle ==  NULL)
         dbusInit();
