@@ -1709,6 +1709,7 @@ int prepare_dhcp_conf (char *input)
 	}
 
 	fprintf(g_fArmConsoleLog, "DHCP server configuring for Mesh network\n");
+        fprintf(g_fArmConsoleLog, "%s:%d [ABHIDEBUG] - Utopia.c\n", __FUNCTION__,__LINE__);
 #if defined (_COSA_INTEL_XB3_ARM_)
    	fprintf(l_fLocal_Dhcp_ConfFile, "interface=l2sd0.112\n");
 	fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.5,169.254.0.253,255.255.255.0,infinite\n"); 
@@ -1790,7 +1791,28 @@ int prepare_dhcp_conf (char *input)
                 fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=br403,6,%s\n", l_cWan_Dhcp_Dns);
                 fprintf(g_fArmConsoleLog, "DHCP_SERVER : [br403] dhcp-option=br403,6,%s\n", l_cWan_Dhcp_Dns);
         }
+        
+        fprintf(l_fLocal_Dhcp_ConfFile, "interface=br412\n");
+        fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=192.168.250.2,192.168.250.253,255.255.255.0,infinite\n");
 
+        // Add br412 custom dns server configuration
+        if( l_bDhcpNs_Enabled && l_bIsValidWanDHCPNs )
+        {
+                fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=br412,6,%s\n", l_cWan_Dhcp_Dns);
+                fprintf(g_fArmConsoleLog, "DHCP_SERVER : [br412] dhcp-option=br412,6,%s\n", l_cWan_Dhcp_Dns);
+        }
+  
+        fprintf(l_fLocal_Dhcp_ConfFile, "interface=brlan115\n");
+        fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.5.5,169.254.5.253,255.255.255.0,infinite\n");
+
+        // Add brlan115 custom dns server configuration
+        if( l_bDhcpNs_Enabled && l_bIsValidWanDHCPNs )
+        {
+                fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brlan115,6,%s\n", l_cWan_Dhcp_Dns);
+                fprintf(g_fArmConsoleLog, "DHCP_SERVER : [brlan115] dhcp-option=brlan115,6,%s\n", l_cWan_Dhcp_Dns);
+        }
+  
+  
         fprintf(l_fLocal_Dhcp_ConfFile, "interface=brebhaul\n");
         fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.85.5,169.254.85.253,255.255.255.0,infinite\n");
 

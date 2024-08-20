@@ -1227,6 +1227,21 @@ fi
                 echo "${PREFIX}""dhcp-option=br403,6,$WAN_DHCP_NS" >> $LOCAL_DHCP_CONF
             fi
 
+	    echo "interface=br412" >> $LOCAL_DHCP_CONF
+            echo "dhcp-range=192.168.250.2,192.168.250.253,255.255.255.0,infinite" >> $LOCAL_DHCP_CONF
+
+            if [ "1" == "$NAMESERVERENABLED" ] && [ -n "$WAN_DHCP_NS" ]; then
+                echo "${PREFIX}""dhcp-option=br412,6,$WAN_DHCP_NS" >> $LOCAL_DHCP_CONF
+            fi
+
+	    echo "interface=brlan115" >> $LOCAL_DHCP_CONF
+            echo "dhcp-range=169.254.5.5,169.254.5.253,255.255.255.0,infinite" >> $LOCAL_DHCP_CONF
+
+            if [ "1" == "$NAMESERVERENABLED" ] && [ -n "$WAN_DHCP_NS" ]; then
+                echo "${PREFIX}""dhcp-option=brlan115,6,$WAN_DHCP_NS" >> $LOCAL_DHCP_CONF
+            fi
+
+
        elif [ "$BOX_TYPE" = "turris" ]; then
            echo "interface=wifi2" >> $LOCAL_DHCP_CONF
            echo "dhcp-range=169.254.0.5,169.254.0.126,255.255.255.128,infinite" >> $LOCAL_DHCP_CONF

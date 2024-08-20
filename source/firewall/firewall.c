@@ -11190,6 +11190,16 @@ static int prepare_multinet_filter_forward (FILE *filter_fp)
     fprintf(filter_fp, "-A FORWARD -i erouter0 -o brlan113 -j DROP\n");
     fprintf(filter_fp, "-A FORWARD -i brlan113 -d 192.168.100.1/32 -p tcp -m multiport --dport 22,80,443 -j DROP\n");
 
+    fprintf(filter_fp, "-A INPUT -i brlan115 -d 169.254.5.0/24 -j ACCEPT\n");
+    fprintf(filter_fp, "-A INPUT -i brlan115 -m pkttype ! --pkt-type unicast -j ACCEPT\n");
+    fprintf(filter_fp, "-A FORWARD -i brlan115 -o erouter0 -j DROP\n");
+    fprintf(filter_fp, "-A FORWARD -i brlan0 -o brlan115 -j DROP\n");
+    fprintf(filter_fp, "-A FORWARD -i brlan1 -o brlan115 -j DROP\n");
+    fprintf(filter_fp, "-A FORWARD -i brlan115 -o brlan0 -j DROP\n");
+    fprintf(filter_fp, "-A FORWARD -i brlan115 -o brlan1 -j DROP\n");
+    fprintf(filter_fp, "-A FORWARD -i erouter0 -o brlan115 -j DROP\n");
+    fprintf(filter_fp, "-A FORWARD -i brlan115 -d 192.168.100.1/32 -p tcp -m multiport --dport 22,80,443 -j DROP\n");
+
     fprintf(filter_fp, "-A INPUT -i brebhaul -d 169.254.85.0/24 -j ACCEPT\n");
     fprintf(filter_fp, "-A INPUT -i brebhaul -m pkttype ! --pkt-type unicast -j ACCEPT\n");
 #elif defined (INTEL_PUMA7) || (defined (_COSA_BCM_ARM_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)) || defined(_COSA_QCA_ARM_) // ARRIS XB6 ATOM, TCXB6
@@ -11786,6 +11796,35 @@ static void do_ipv4_UIoverWAN_filter(FILE* fp) {
         FIREWALL_DEBUG("Exiting do_ipv4_UIoverWAN_filter \n"); 
         #endif
 }
+
+/*
+ * Rules for secure backhaul bridge
+ */
+#if defined (INTEL_PUMA7) || ((defined (_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_COSA_QCA_ARM_)) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)) || defined (_CBR2_PRODUCT_REQ_)
+static void do_secure_backhaul(FILE *filter_fp)
+{
+    FIREWALL_DEBUG("Inside do_secure_backhaul\n");
+    fprintf(filter_fp, "-N SECURE_BHAUL\n");
+    fprintf(filter_fp, "-A INPUT -i br412 -j SECURE_BHAUL\n");
+    fprintf(filter_fp, "-A FORWARD -i br412 -o %s -j SECURE_BHAUL\n", current_wan_ifname);
+    fprintf(filter_fp, "-A FORWARD -i %s -o br412 -j SECURE_BHAUL\n", current_wan_ifname);
+    fprintf(filter_fp, "-A FORWARD -i br412 -j DROP\n");
+
+    fprintf(filter_fp, "-A SECURE_BHAUL -p udp --dport 67:68 --sport 67:68 -j ACCEPT\n");  // Allow DHCP
+    fprintf(filter_fp, "-A SECURE_BHAUL -p udp --dport 53 -j ACCEPT\n");  // Allow DNS
+    fprintf(filter_fp, "-A SECURE_BHAUL -p udp --dport 123 -j ACCEPT\n"); // Allow NTP
+    // Allow ping to DNS root servers a.root-servers.net to m.root-servers.net
+    for (int i = 0; i < 13; i++)
+    {
+        fprintf(filter_fp, "-A SECURE_BHAUL -p icmp --icmp-type echo-request -d %c.root-servers.net -j ACCEPT\n", 'a' + i);
+    }
+    fprintf(filter_fp, "-A SECURE_BHAUL -p icmp --icmp-type echo-request -d 192.168.250.254 -j ACCEPT\n");
+    fprintf(filter_fp, "-A SECURE_BHAUL -d 96.102.0.0/15 -j ACCEPT\n"); // Allow connection to Comcast Controller IP's
+    fprintf(filter_fp, "-A SECURE_BHAUL -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT\n");
+    fprintf(filter_fp, "-A SECURE_BHAUL -j DROP\n");
+    FIREWALL_DEBUG("Exiting do_secure_backhaul\n");
+}
+#endif
 /*
  *  Procedure     : prepare_subtables
  *  Purpose       : prepare the iptables-restore file that establishes all
@@ -12601,6 +12640,7 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
 #if defined (INTEL_PUMA7) || ((defined (_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_PLATFORM_BANANAPI_R4_) || defined(_COSA_QCA_ARM_)) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)) || defined (_CBR2_PRODUCT_REQ_)
    fprintf(filter_fp, "-I FORWARD 2 -i br403 -o %s -j ACCEPT\n", current_wan_ifname);
    fprintf(filter_fp, "-I FORWARD 3 -i %s -o br403 -j ACCEPT\n", current_wan_ifname);
+   do_secure_backhaul(filter_fp);
 #endif
 
 #if defined (INTEL_PUMA7) || (_COSA_INTEL_XB3_ARM_)
