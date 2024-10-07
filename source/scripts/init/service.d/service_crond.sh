@@ -69,7 +69,11 @@ service_start ()
       # we will get the same values of random over reboots
       # but there will be divergence of values accross hosts
       # which is the property we are looking for
-      INT=wan0
+      if [ "$WAN0_IS_DUMMY" = "true" ]; then
+            INT="privbr"
+      else
+            INT="wan0"
+      fi
       OUR_MAC=`ip link show $INT | grep link | awk '{print $2}'`
       MAC1=`echo "$OUR_MAC" | awk 'BEGIN { FS = ":" } ; { printf ("%d", "0x"$6) }'`
       MAC2=`echo "$OUR_MAC" | awk 'BEGIN { FS = ":" } ; { printf ("%d", "0x"$5) }'`

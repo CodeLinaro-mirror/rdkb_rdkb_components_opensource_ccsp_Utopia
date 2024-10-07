@@ -44,10 +44,14 @@ source /etc/utopia/service.d/log_capture_path.sh
 source /etc/device.properties
 
 
-if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ] || [ "$BOX_TYPE" == "SCER11BEL" ]; then
+if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ] || [ "$BOX_TYPE" = "SCER11BEL" ]; then
    CMINTERFACE="erouter0"
 else
-   CMINTERFACE="wan0"
+   if [ "$WAN0_IS_DUMMY" = "true" ]; then
+       CMINTERFACE="privbr:0"
+   else
+       CMINTERFACE="wan0"
+   fi
 fi
 
 SERVICE_NAME="sshd"
