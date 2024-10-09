@@ -1492,7 +1492,7 @@ static int wan_iface_up(struct serv_wan *sw)
 static int wan_iface_down(struct serv_wan *sw)
 {
     int err = 0;
-#if !defined(_PLATFORM_RASPBERRYPI_)
+#if !defined(_PLATFORM_RASPBERRYPI_)  && !defined(_PLATFORM_BANANAPI_R4_)
     err = v_secure_system("ip -4 link set %s down", sw->ifname);
 #endif
 #if PUMA6_OR_NEWER_SOC_TYPE
@@ -1722,13 +1722,13 @@ static int wan_addr_set(struct serv_wan *sw)
         else
         {
 #if !defined(_COSA_BCM_MIPS_)
-            sysevent_get(sw->sefd, sw->setok, "misc-ready-from-mischandler",mischandler_ready, sizeof(mischandler_ready));
-    	    if(strcmp(mischandler_ready,"true") == 0)
-    	    {
-                //only for first time
-#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
-                fprintf(stderr, "[%s] ready is set from misc handler. Doing gw_lan_refresh\n", PROG_NAME);
-#if defined (_XB6_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_)
+    	sysevent_get(sw->sefd, sw->setok, "misc-ready-from-mischandler",mischandler_ready, sizeof(mischandler_ready));
+    	if(strcmp(mischandler_ready,"true") == 0)
+    	{
+    		//only for first time
+    #if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)  && !defined(_PLATFORM_BANANAPI_R4_)
+    		fprintf(stderr, "[%s] ready is set from misc handler. Doing gw_lan_refresh\n", PROG_NAME);
+            #if defined (_XB6_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_)
                 v_secure_system("firewall");
 #else
                 // TODO : gw_lan_refresh to be removed from here once udhcpc is made generic to all platforms

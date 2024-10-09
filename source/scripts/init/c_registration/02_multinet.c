@@ -73,7 +73,7 @@ const char* SERVICE_DEFAULT_HANDLER = "/etc/utopia/service.d/bridgeutil_sr213.sh
 const char* SERVICE_DEFAULT_HANDLER = "/etc/utopia/service.d/bridgeutil_sr300.sh";
 #elif defined (_HUB4_PRODUCT_REQ_)
 const char* SERVICE_DEFAULT_HANDLER = "/etc/utopia/service.d/bridgeutil_hub4.sh";
-#elif defined (_COSA_BCM_ARM_) && ! defined (_PLATFORM_RASPBERRYPI_)
+#elif defined (_COSA_BCM_ARM_) && ! defined (_PLATFORM_RASPBERRYPI_) && ! defined(_PLATFORM_BANANAPI_R4_)
 const char* SERVICE_DEFAULT_HANDLER = "/etc/utopia/service.d/vlan_util_tchxb6.sh";
 #else
 const char* SERVICE_DEFAULT_HANDLER = "/etc/utopia/service.d/service_multinet_exec";
@@ -219,7 +219,7 @@ const char* SERVICE_CUSTOM_EVENTS[] = {
     "meshethbhaul-up|/etc/utopia/service.d/bridgeutil_hub4.sh|NULL|"TUPLE_FLAG_EVENT,
     "meshethbhaul-down|/etc/utopia/service.d/bridgeutil_hub4.sh|NULL|"TUPLE_FLAG_EVENT,
     NULL };
-#elif defined (_COSA_BCM_ARM_) && ! defined (_PLATFORM_RASPBERRYPI_)
+#elif defined (_COSA_BCM_ARM_) && ! defined (_PLATFORM_RASPBERRYPI_) && ! defined(_PLATFORM_BANANAPI_R4_)
 const char* SERVICE_CUSTOM_EVENTS[] = { 
     "multinet-syncNets|/etc/utopia/service.d/vlan_util_tchxb6.sh|"ACTION_FLAG_NOT_THREADSAFE"|"TUPLE_FLAG_EVENT,
     "multinet-syncMembers|/etc/utopia/service.d/vlan_util_tchxb6.sh|"ACTION_FLAG_NOT_THREADSAFE"|"TUPLE_FLAG_EVENT,
@@ -361,7 +361,7 @@ void srv_register(void) {
    v_secure_system("/etc/utopia/service.d/service_multinet/handle_sw.sh initialize");
 #endif
 #else
-#if !defined(_COSA_BCM_ARM_) || !defined(INTEL_PUMA7) || !defined(_CBR_PRODUCT_REQ_) || defined(_PLATFORM_RASPBERRYPI_) || !defined(_COSA_QCA_ARM_)
+#if !defined(_COSA_BCM_ARM_) || !defined(INTEL_PUMA7) || !defined(_CBR_PRODUCT_REQ_) || defined(_PLATFORM_RASPBERRYPI_) || !defined(_COSA_QCA_ARM_) || defined(_PLATFORM_BANANAPI_R4_)
    v_secure_system("/etc/utopia/service.d/service_multinet/handle_sw.sh initialize");
 #endif
 #endif
