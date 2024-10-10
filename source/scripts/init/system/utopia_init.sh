@@ -264,9 +264,11 @@ else
 fi
 
 # Set the factory reset key if it was pressed for longer than our threshold
-if test "$BUTTON_THRESHOLD" -le "$PUNIT_RESET_DURATION"; then
-   syscfg set $FACTORY_RESET_KEY $FACTORY_RESET_RGWIFI && BUTTON_FR="1"
-   syscfg commit
+if [ x != x$PUNIT_RESET_DURATION ]; then
+    if test "$BUTTON_THRESHOLD" -le "$PUNIT_RESET_DURATION"; then
+       syscfg set $FACTORY_RESET_KEY $FACTORY_RESET_RGWIFI && BUTTON_FR="1"
+       syscfg commit
+    fi
 fi
 
 SYSCFG_FR_VAL="`syscfg get $FACTORY_RESET_KEY`"
