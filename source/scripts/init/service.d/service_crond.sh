@@ -101,7 +101,7 @@ service_start ()
       #zqiu: monitor lan client traffic
       echo "* * * * *   /usr/ccsp/tad/rxtx_lan.sh" >> $CRONTAB_FILE
 
-      if [ "$BOX_TYPE" == "SR300" ] || [ "$BOX_TYPE" == "SR213" ]; then
+      if [ "$BOX_TYPE" == "SR300" ] || [ "$BOX_TYPE" == "SR213" ] || [ "$BOX_TYPE" == "SCER11BEL" ]; then
         echo "* * * * *   /etc/sky/set_dscp_lan.sh" >> $CRONTAB_FILE
       fi
 
