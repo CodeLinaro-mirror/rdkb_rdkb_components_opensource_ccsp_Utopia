@@ -319,7 +319,7 @@ static void serv_ddns_write_status(struct serv_ddns *sdd)
     gettimeofday(&tv, NULL);
     t = tv.tv_sec;
     info = localtime(&t);
-    strftime(command, sizeof(command), "%m:%d:%y_%H:%M:%S\n", info); // format: 04:09:21_22:15:43
+    strftime(command, sizeof(command), "%Y-%m-%d %H:%M:%S", info);   // format : 2024-10-11T14:00:20Z
 
     if(sdd->client.connection_status == SUCCESS)
     {
