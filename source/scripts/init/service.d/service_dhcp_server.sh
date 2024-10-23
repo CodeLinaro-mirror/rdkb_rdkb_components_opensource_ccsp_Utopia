@@ -514,7 +514,9 @@ dhcp_server_start ()
          return 0
    fi
 
-   if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ]; then
+   SelfHealSupport=`sysevent get SelfhelpWANConnectionDiagSupport`
+   #below change (check) is related to change https://gerrit.teamccp.com/#/c/569117/1/scripts/task_health_monitor.sh
+   if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ] || [ "$SelfHealSupport" = "true" ]; then
        $PMON unsetproc dhcp_server
    fi
 

@@ -53,7 +53,7 @@ source /etc/device.properties
 
 SERVICE_NAME="crond"
 SELF_NAME="`basename "$0"`"
-
+ntpHealthCheck=`sysevent get NTPHealthCheckSupport`
 service_start () 
 {
    echo_t "SERVICE_CROND : starting ${SERVICE_NAME} service"
@@ -186,7 +186,7 @@ service_start ()
           addCron "48 * * * *  sh /etc/sky/monitor_dhd_dump.sh &"
       fi
 
-      if [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ] && [ "$BOX_TYPE" != "WNXL11BWL" ]; then
+      if [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ] && [ "$BOX_TYPE" != "WNXL11BWL" ] && [ "$BOX_TYPE" != "SCER11BEL" ]; then
          #RDKB-43895 log the firmware bank informations in selfheal log
          echo "5 */12  * * *  /usr/bin/FwBankInfo" >> $CRONTAB_FILE
       fi
@@ -197,9 +197,11 @@ service_start ()
               echo "*/15 3-4 * * *  /etc/sky/monitor_voice_endpoint.sh" >> $CRONTAB_FILE
       fi
  
-      if [ "$BOX_TYPE" == "HUB4" ] || [ "$BOX_TYPE" == "SR213" ]; then
+      if [ "$BOX_TYPE" == "HUB4" ] || [ "$BOX_TYPE" == "SR213" ] || [ "$ntpHealthCheck" == "true" ]; then
               #To monitor ntp sync failure every 2 hrs
-              echo "1 */2 * * *  /etc/sky/ntp_health_check.sh" >> $CRONTAB_FILE
+              if [ -e "/etc/sky/ntp_health_check.sh" ]; then
+                  echo "1 */2 * * *  /etc/sky/ntp_health_check.sh" >> $CRONTAB_FILE
+              fi
       fi
 
       # Logging current chain mask value of 2G - runs on 1st minute of every 12th hour - only for 3941 box

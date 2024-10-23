@@ -40,7 +40,9 @@ source /etc/waninfo.sh
 DHCP_CONF=/etc/dnsmasq.conf
 DHCP_STATIC_HOSTS_FILE=/etc/dhcp_static_hosts
 DHCP_OPTIONS_FILE=/var/dhcp_options
-if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ]; then
+SelfHealSupport=`sysevent get SelfhelpWANConnectionDiagSupport`
+LANIPV6Support=`sysevent get LANIPv6GUASupport`
+if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$SelfHealSupport" = "true" ]; then
 LOCAL_DHCP_CONF=/tmp/dnsmasq.conf
 LOCAL_DHCP_STATIC_HOSTS_FILE=/tmp/dhcp_static_hosts
 LOCAL_DHCP_OPTIONS_FILE=/tmp/dhcp_options
@@ -52,7 +54,7 @@ fi
 RESOLV_CONF=/etc/resolv.conf
 TMP_RESOLVE_CONF=/tmp/lte_resolv.conf
 WAN_INTERFACE=$(getWanInterfaceName)
-if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ]; then
+if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ] || [  "$SelfHealSupport" = "true" ]; then
     STATIC_RESOLVE_FILE=/etc/urls_to_ip_resolve
 fi
 # Variables needed for captive portal mode : start
@@ -543,7 +545,7 @@ get_dhcp_option_for_brlan0() {
               NS=`sysevent get wan_dhcp_dns`
               if [ -n "$NS" ] ; then
                   NS=`echo "$NS" | sed "s/ /,/g"`
-	      elif [ "$BOX_TYPE" != "HUB4" ] && [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ]; then
+	      elif [ "$BOX_TYPE" != "HUB4" ] && [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ] && [ "$SelfHealSupport" != "true" ]; then
 		  #This change is not needed for SKY products as it is related to camera upgrade issue in TCXB7-4171, TCXB7-4153, RDKB-39631 and it had caused SHARMAN-1609, so adding SKY flags
 	          NS=`cat $RESOLV_CONF | grep nameserver | grep "\." | head -n 2 | cut -d" " -f2`
 		  if [ -n "$NS" ] ; then
@@ -1087,7 +1089,7 @@ fi
 	  prepare_dhcp_options_wan_dns	
    fi
    
-   if [ "$BOX_TYPE" != "HUB4" ] && [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ]; then
+   if [ "$BOX_TYPE" != "HUB4" ] && [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ] && [ "$SelfHealSupport" != "true" ]; then
       nameserver=`grep "nameserver" $RESOLV_CONF | awk '{print $2}'|grep -v ":"|tr '\n' ','| sed -e 's/,$//'`
       if [ -n "$nameserver" ]; then
          echo "option:dns-server,$nameserver" >> $DHCP_OPTIONS_FILE
@@ -1293,7 +1295,7 @@ fi
 			   echo "${PREFIX}""dhcp-option=br403,6,$WAN_DHCP_NS" >> $LOCAL_DHCP_CONF
 		   fi
 
-       elif [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ]; then
+       elif [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [[ "$BOX_TYPE" = "SCER11BEL" ]]; then
            echo "interface=brlan6" >> $LOCAL_DHCP_CONF
            echo "dhcp-range=169.254.0.5,169.254.0.253,255.255.255.0,infinite" >> $LOCAL_DHCP_CONF
 
@@ -1318,9 +1320,9 @@ fi
                            echo "${PREFIX}""dhcp-option=br403,6,$WAN_DHCP_NS" >> $LOCAL_DHCP_CONF
                    fi
 
-           if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ]; then
+           if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$SelfHealSupport" = "true" ]]; then
 
-                if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ]; then
+                if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ] || [ "$SelfHealSupport" == "true" ]; then
                     do_static_resolution
                 fi
                #SKYH4-952: Sky selfheal support.
@@ -1334,7 +1336,7 @@ fi
                isItLocalHost=`cat /etc/resolv.conf | grep "127.0.0.1" | cut -d " " -f2`
                if [ "$resolv_conf_entry_cnt" == "1" ] && [ "$isItLocalHost" == "127.0.0.1" ]
                then
-                   if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ]; then
+                   if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ] || [ "$SelfHealSupport" = "true" ]; then
                    #If wan is down and if captive portal is enabled, set cpative portal mode
                    #Once captive portal mode is set, it will set lan IP for DNS in dnsmasq.conf
                         if [ "$CAPTIVEPORTAL_ENABLED" == "true" ]; then
@@ -1360,7 +1362,7 @@ fi
         echo "address=/#/$addr" >> $LOCAL_DHCP_CONF
 
         # Redirection IPv6
-        if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ]
+        if [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "HUB4" ] || [[ "$LANIPV6Support" = "true" ]]
         then
             ip6addr=`sysevent get ula_address`
             echo "address=/#/$ip6addr" >> $LOCAL_DHCP_CONF

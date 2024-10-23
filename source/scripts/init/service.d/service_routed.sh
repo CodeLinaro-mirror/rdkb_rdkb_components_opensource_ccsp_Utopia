@@ -42,7 +42,7 @@
 source /etc/device.properties
 
 SERVICE_NAME="routed"
-
+LANULASupport=`sysevent get LANULASupport`
 case "$1" in
    "${SERVICE_NAME}-start")
       service_routed start
@@ -70,7 +70,7 @@ case "$1" in
            service_routed start
        elif [ "$status" == "stopped" ]; then
            # As per Sky requirement, radvd should run with ULA prefix though the wan-status is down
-           if [ "$BOX_TYPE" != "HUB4" ] && [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ] && [ "$BOX_TYPE" != "WNXL11BWL" ]; then
+           if [ "$BOX_TYPE" != "HUB4" ] && [ "$BOX_TYPE" != "SR300" ] && [ "$BOX_TYPE" != "SE501" ] && [ "$BOX_TYPE" != "SR213" ] && [ "$BOX_TYPE" != "WNXL11BWL" ] && [ "$LANULASupport" != "true" ]; then
                service_routed stop
            fi
        fi
