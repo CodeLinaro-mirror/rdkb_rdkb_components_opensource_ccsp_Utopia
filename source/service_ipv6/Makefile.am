@@ -25,7 +25,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/source/include \
 
 AM_LDFLAGS = -lccsp_common -lsecure_wrapper $(DBUS_LIBS)
 
-service_ipv6_SOURCES = service_ipv6.c
+service_ipv6_SOURCES = service_ipv6.c service_ipv6_main.c
 
 service_ipv6_LDADD = $(top_builddir)/source/util/utils/libutopiautil.la \
                      $(top_builddir)/source/services/lib/libsrvmgr.la \

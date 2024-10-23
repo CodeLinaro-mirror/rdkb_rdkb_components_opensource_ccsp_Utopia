@@ -41,6 +41,15 @@
 #include "errno.h"
 #include "util.h"
 
+#ifdef UNIT_TEST_DOCKER_SUPPORT
+#define STATIC
+    extern FILE* fopen_mock(const char* filename, const char* mode);
+    #define fopen                     fopen_mock    // Mock fopen for testing
+
+#else
+#define STATIC static
+#endif
+
 #define isValidSubnetByte(byte) (((byte == 255) || (byte == 254) || (byte == 252) || \
                                   (byte == 248) || (byte == 240) || (byte == 224) || \
                                   (byte == 192) || (byte == 128)) ? 1 : 0)
@@ -77,7 +86,7 @@ char g_cXdns_Enabled[8] = {0};
 char g_cMfg_Name[8] = {0}, g_cAtom_Arping_IP[16] = {0};
 char g_cMig_Check[8] = {0};
 
-static int dbusInit( void )
+STATIC int dbusInit( void )
 {
     int ret = 0;
     char* pCfg = CCSP_MSG_BUS_CFG;
@@ -421,7 +430,7 @@ int sysevent_syscfg_init()
 	return SUCCESS;
 }
 
-int main(int argc, char *argv[])
+int service_dhcp_main(int argc, char *argv[])
 {
 	char l_cL3Inst[8] = {0}, l_cSysevent_Cmd[255] = {0};
 	int l_iL3Inst;

@@ -19,7 +19,7 @@
 
 bin_PROGRAMS = service_udhcpc
 
-service_udhcpc_SOURCES = service_udhcpc.c
+service_udhcpc_SOURCES = service_udhcpc.c service_udhcpc_main.c
 
 service_udhcpc_CPPFLAGS = -I$(top_srcdir)/source/include \
                           -I$(top_srcdir)/source/util/utils \

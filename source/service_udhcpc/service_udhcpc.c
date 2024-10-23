@@ -107,10 +107,16 @@
 #define DHCP_MTA_OPTION "dhcp_mta_option"
 #define RECEIVED "received"
 
-static int sysevent_fd = -1;
-static token_t sysevent_token;
+#ifdef UNIT_TEST_DOCKER_SUPPORT 
+#define STATIC 
+#else 
+#define STATIC static 
+#endif
+
+STATIC int sysevent_fd = -1;
+STATIC token_t sysevent_token;
 #ifndef FEATURE_RDKB_WAN_MANAGER
-static bool dns_changed = false;
+STATIC bool dns_changed = false;
 #endif
 
 typedef struct udhcpc_script_t
@@ -152,20 +158,20 @@ typedef struct udhcpc_script_t
  * @param pinfo Pointer to udhcpc_script_t contains basic ipv4 info
  * @return 0 on success else returns -1.
  */
-static int get_and_fill_env_data (ipc_dhcpv4_data_t *dhcpv4_data, udhcpc_script_t* pinfo);
+STATIC int get_and_fill_env_data (ipc_dhcpv4_data_t *dhcpv4_data, udhcpc_script_t* pinfo);
 /**
  * @brief Send dhcpv4 data to RdkWanmanager.
  * @param structure contains the dhcpv4 data
  * @return 0 on success else returned -1
  */
-static int send_dhcp_data_to_wanmanager (ipc_dhcpv4_data_t *dhcpv4_data);
+STATIC int send_dhcp_data_to_wanmanager (ipc_dhcpv4_data_t *dhcpv4_data);
 #endif
 
-static int read_cmd_output (char *cmd, char *output_buf, int size_buf);
+STATIC int read_cmd_output (char *cmd, char *output_buf, int size_buf);
 #ifndef FEATURE_RDKB_WAN_MANAGER
-static void compare_and_delete_old_dns (udhcpc_script_t *pinfo);
-static int set_dns_sysevents (udhcpc_script_t *pinfo);
-static int set_router_sysevents (udhcpc_script_t *pinfo);
+STATIC void compare_and_delete_old_dns (udhcpc_script_t *pinfo);
+STATIC int set_dns_sysevents (udhcpc_script_t *pinfo);
+STATIC int set_router_sysevents (udhcpc_script_t *pinfo);
 #endif
 
 struct dns_server{
@@ -173,7 +179,7 @@ struct dns_server{
 
 };
 
-static int sysevent_init (void)
+STATIC int sysevent_init (void)
 {
     sysevent_fd =  sysevent_open("127.0.0.1", SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, "udhcpc", &sysevent_token);
     if (sysevent_fd < 0)
@@ -181,7 +187,7 @@ static int sysevent_init (void)
     return 0;
 }
 
-static void udhcpc_sysevent_close (void)
+STATIC void udhcpc_sysevent_close (void)
 {
     if (0 <= sysevent_fd)
     {
@@ -189,7 +195,7 @@ static void udhcpc_sysevent_close (void)
     }
 }
 
-static char *GetDeviceProperties (char *param)
+STATIC char *GetDeviceProperties (char *param)
 {
     FILE *fp1=NULL;
     char *valPtr = NULL;
@@ -226,7 +232,7 @@ static char *GetDeviceProperties (char *param)
 }
 
 #if defined (EROUTER_DHCP_OPTION_MTA) && defined (FEATURE_RDKB_WAN_MANAGER)
-static void clear_mta_params ()
+STATIC void clear_mta_params ()
 {
     sysevent_set(sysevent_fd, sysevent_token, MTA_DHCPV4_PRIMARY_ADDR, NULL, 0);
     sysevent_set(sysevent_fd, sysevent_token, MTA_DHCPV4_SECONDARY_ADDR, NULL, 0);
@@ -237,7 +243,7 @@ static void clear_mta_params ()
 }
 
 
-static void set_mta_config ()
+STATIC void set_mta_config ()
 {
     char *opt122 = getenv("opt122");
     if (opt122 == NULL)
@@ -292,7 +298,7 @@ static void set_mta_config ()
 
 #endif
 
-static int handle_defconfig (udhcpc_script_t *pinfo)
+STATIC int handle_defconfig (udhcpc_script_t *pinfo)
 {
     int ret = 0;    
 #ifdef FEATURE_RDKB_WAN_MANAGER
@@ -362,7 +368,7 @@ static int handle_defconfig (udhcpc_script_t *pinfo)
 }
 
 #ifndef FEATURE_RDKB_WAN_MANAGER
-static int save_dhcp_offer (udhcpc_script_t *pinfo)
+STATIC int save_dhcp_offer (udhcpc_script_t *pinfo)
 {
     char eventname[256];
     char buf[24];
@@ -434,7 +440,7 @@ static int save_dhcp_offer (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static int set_dns_sysevents (udhcpc_script_t *pinfo)
+STATIC int set_dns_sysevents (udhcpc_script_t *pinfo)
 {
     char dns[256] ;
     char *tok = NULL;
@@ -474,7 +480,7 @@ static int set_dns_sysevents (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static int update_ipv4dns (udhcpc_script_t *pinfo)
+STATIC int update_ipv4dns (udhcpc_script_t *pinfo)
 {
     FILE *fp = NULL;
     char *tok = NULL;
@@ -506,7 +512,7 @@ static int update_ipv4dns (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static int update_dns_tofile (udhcpc_script_t *pinfo)
+STATIC int update_dns_tofile (udhcpc_script_t *pinfo)
 {
     char dns[256];
     char *tok = NULL;
@@ -564,7 +570,7 @@ static int update_dns_tofile (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static int add_route (udhcpc_script_t *pinfo)
+STATIC int add_route (udhcpc_script_t *pinfo)
 {
     char router[256];
     char *tok = NULL;
@@ -615,7 +621,7 @@ static int add_route (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static int set_wan_sysevents (void)
+STATIC int set_wan_sysevents (void)
 {
     char *serverid = getenv("serverid");
     char *lease = getenv("lease");
@@ -690,7 +696,7 @@ static int set_wan_sysevents (void)
     return 0;
 }
 
-static int set_router_sysevents (udhcpc_script_t *pinfo)
+STATIC int set_router_sysevents (udhcpc_script_t *pinfo)
 {
     char router[256];
     char *tok = NULL;
@@ -733,7 +739,7 @@ static int set_router_sysevents (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static void compare_and_delete_old_dns (udhcpc_script_t *pinfo)
+STATIC void compare_and_delete_old_dns (udhcpc_script_t *pinfo)
 {
   FILE* fptr = NULL;
   FILE* ftmp = NULL;
@@ -882,7 +888,7 @@ static void compare_and_delete_old_dns (udhcpc_script_t *pinfo)
    }
 }
 
-static int update_resolveconf (udhcpc_script_t *pinfo)
+STATIC int update_resolveconf (udhcpc_script_t *pinfo)
 {
     FILE *fp = NULL;
     char *tok = NULL;
@@ -916,7 +922,7 @@ static int update_resolveconf (udhcpc_script_t *pinfo)
 #endif
 
 #ifdef FEATURE_RDKB_WAN_MANAGER
-static int handle_leasefail (udhcpc_script_t *pinfo)
+STATIC int handle_leasefail (udhcpc_script_t *pinfo)
 {
     /**
      * This argument is used when udhcpc starts, and when a leases is lost.
@@ -956,7 +962,7 @@ static int handle_leasefail (udhcpc_script_t *pinfo)
 }
 #endif //FEATURE_RDKB_WAN_MANAGER
 
-static int handle_wan (udhcpc_script_t *pinfo)
+STATIC int handle_wan (udhcpc_script_t *pinfo)
 {
 #ifdef FEATURE_RDKB_WAN_MANAGER
     /**
@@ -1157,7 +1163,7 @@ static int handle_wan (udhcpc_script_t *pinfo)
     return 0;
 }
 
-static int read_cmd_output (char *cmd, char *output_buf, int size_buf)
+STATIC int read_cmd_output (char *cmd, char *output_buf, int size_buf)
 {
     FILE *f = NULL;
     char *pos = NULL;
@@ -1178,7 +1184,7 @@ static int read_cmd_output (char *cmd, char *output_buf, int size_buf)
     return 0;
 }
 
-static bool root_is_nfs (void)
+STATIC bool root_is_nfs (void)
 {
     int result = -1;
     char out[128];
@@ -1190,7 +1196,7 @@ static bool root_is_nfs (void)
     return false;
 }
 
-static int init_udhcpc_script_info (udhcpc_script_t *pinfo, char *option)
+STATIC int init_udhcpc_script_info (udhcpc_script_t *pinfo, char *option)
 {
     char *dns = NULL;
     char *router = NULL;
@@ -1235,7 +1241,7 @@ static int init_udhcpc_script_info (udhcpc_script_t *pinfo, char *option)
     return 0;
 }
 #ifdef FEATURE_RDKB_WAN_MANAGER
-static uint32_t hex2dec(char *hex)
+STATIC uint32_t hex2dec(char *hex)
 {
     uint32_t decimal = 0, base = 1;
     int length = strlen(hex);
@@ -1261,7 +1267,7 @@ static uint32_t hex2dec(char *hex)
     return decimal;
 }
 
-static int get_and_fill_env_data (ipc_dhcpv4_data_t *dhcpv4_data, udhcpc_script_t* pinfo)
+STATIC int get_and_fill_env_data (ipc_dhcpv4_data_t *dhcpv4_data, udhcpc_script_t* pinfo)
 {
     char *env;
     errno_t safec_rc = -1;
@@ -1477,7 +1483,7 @@ static int get_and_fill_env_data (ipc_dhcpv4_data_t *dhcpv4_data, udhcpc_script_
     return 0;
 }
 
-static int send_dhcp_data_to_wanmanager (ipc_dhcpv4_data_t *dhcpv4_data)
+STATIC int send_dhcp_data_to_wanmanager (ipc_dhcpv4_data_t *dhcpv4_data)
 {
     if ( NULL == dhcpv4_data)
     {
@@ -1532,7 +1538,7 @@ static int send_dhcp_data_to_wanmanager (ipc_dhcpv4_data_t *dhcpv4_data)
 }
 #endif
 
-int main(int argc, char *argv[])
+int service_udhcpc_main(int argc, char *argv[])
 {
     udhcpc_script_t info;
 

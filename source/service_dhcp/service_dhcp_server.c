@@ -59,6 +59,12 @@
 #define DHCP_SLOW_START_2_FILE  "/etc/cron/cron.every5minute/dhcp_slow_start.sh"
 #define DHCP_SLOW_START_3_FILE  "/etc/cron/cron.every10minute/dhcp_slow_start.sh"
 
+#ifdef UNIT_TEST_DOCKER_SUPPORT
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 static char dnsOption[8] = "";
 
 extern void copy_command_output(FILE *, char *, int);
@@ -119,7 +125,7 @@ void _get_shell_output(FILE *fp, char *buf, int len)
     }
 }
 
-static int getValueFromDevicePropsFile(char *str, char **value)
+STATIC int getValueFromDevicePropsFile(char *str, char **value)
 {
     FILE *fp = fopen(DEVICE_PROPERTIES, "r");
     char buf[ 1024 ] = { 0 };

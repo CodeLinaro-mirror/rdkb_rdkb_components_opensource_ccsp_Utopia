@@ -21,7 +21,7 @@ AM_CFLAGS = -fno-exceptions -Wall -Wextra
 
 bin_PROGRAMS = service_dhcp
 
-service_dhcp_SOURCES = dhcp_server_functions.c lan_handler.c service_dhcp.c service_dhcp_server.c service_ipv4.c
+service_dhcp_SOURCES = dhcp_server_functions.c lan_handler.c service_dhcp.c service_dhcp_server.c service_ipv4.c service_dhcp_main.c
 
 service_dhcp_CPPFLAGS = -I$(top_srcdir)/source/include \
                         -I$(top_srcdir)/source/util/utils \

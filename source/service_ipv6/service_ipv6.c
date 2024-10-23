@@ -47,7 +47,6 @@
 #include <syscfg/syscfg.h>
 #include <sysevent/sysevent.h>
 #include "safec_lib_common.h"
-
 #if defined(MULTILAN_FEATURE) || defined(INTEL_PUMA7) || defined(_HUB4_PRODUCT_REQ_)
 #include "ccsp_psm_helper.h"
 #include <ccsp_base_api.h>
@@ -62,6 +61,13 @@
 #endif
 
 #define PROG_NAME       "SERVICE-IPV6"
+
+#ifndef UNIT_TEST_DOCKER_SUPPORT
+#define STATIC static
+#else
+#define STATIC
+#define DHCPV6S_CONF_FILE           "/tmp/dibbler/server.conf"
+#endif
 
 #if defined(INTEL_PUMA7) || defined(MULTILAN_FEATURE) || defined(_HUB4_PRODUCT_REQ_)
 #define CCSP_SUBSYS                 "eRT."
@@ -125,7 +131,6 @@ bool del_addr6_flg = true;
 #define COSA_DML_DHCPV6C_ADDR_T2_SYSEVENT_NAME        "tr_"COSA_DML_DHCPV6_CLIENT_IFNAME"_dhcpv6_client_addr_t2"
 #define COSA_DML_DHCPV6C_ADDR_PRETM_SYSEVENT_NAME     "tr_"COSA_DML_DHCPV6_CLIENT_IFNAME"_dhcpv6_client_addr_pretm"
 #define COSA_DML_DHCPV6C_ADDR_VLDTM_SYSEVENT_NAME     "tr_"COSA_DML_DHCPV6_CLIENT_IFNAME"_dhcpv6_client_addr_vldtm"
-
 /*erouter topology mode*/
 enum tp_mod {
     TPMOD_UNKNOWN,
@@ -247,7 +252,7 @@ struct dhcpv6_tag tag_list[] =
 } \
 
 #ifdef _CBR_PRODUCT_REQ_
-static uint64_t helper_ntoh64(const uint64_t *inputval)
+STATIC uint64_t helper_ntoh64(const uint64_t *inputval)
 {
     uint64_t returnval;
     uint8_t *data = (uint8_t *)&returnval;
@@ -264,13 +269,13 @@ static uint64_t helper_ntoh64(const uint64_t *inputval)
     return returnval;
 }
 
-static uint64_t helper_hton64(const uint64_t *inputval)
+STATIC uint64_t helper_hton64(const uint64_t *inputval)
 {
     return (helper_ntoh64(inputval));
 }
 #endif
 
-static int daemon_stop(const char *pid_file, const char *prog)
+STATIC int daemon_stop(const char *pid_file, const char *prog)
 {
     FILE *fp;
     char pid_str[10];
@@ -301,7 +306,7 @@ static int daemon_stop(const char *pid_file, const char *prog)
 }
 
 #ifdef MULTILAN_FEATURE
-static int mbus_get(char *path, char *val, int size)
+STATIC int mbus_get(char *path, char *val, int size)
 {
     int                      compNum = 0;
     int                      valNum = 0;
@@ -342,7 +347,7 @@ static int mbus_get(char *path, char *val, int size)
 }
 #endif
 
-static int get_dhcpv6s_conf(dhcpv6s_cfg_t *cfg)
+STATIC int get_dhcpv6s_conf(dhcpv6s_cfg_t *cfg)
 {
     DHCPV6S_SYSCFG_GETI(DHCPV6S_NAME, "", 0, "", 0, "serverenable", cfg->enable);
     DHCPV6S_SYSCFG_GETI(DHCPV6S_NAME, "", 0, "", 0, "poolnumber", cfg->pool_num);
@@ -351,7 +356,7 @@ static int get_dhcpv6s_conf(dhcpv6s_cfg_t *cfg)
     return 0;
 }
 
-static int get_dhcpv6s_pool_cfg(struct serv_ipv6 *si6, dhcpv6s_pool_cfg_t *cfg)
+STATIC int get_dhcpv6s_pool_cfg(struct serv_ipv6 *si6, dhcpv6s_pool_cfg_t *cfg)
 {   
     int i = 0;
     dhcpv6s_pool_opt_t *p_opt = NULL;
@@ -432,7 +437,7 @@ static int get_dhcpv6s_pool_cfg(struct serv_ipv6 *si6, dhcpv6s_pool_cfg_t *cfg)
     return 0;
 }
 
-static int get_ia_info(struct serv_ipv6 *si6, char *config_file, ia_na_t *iana, ia_pd_t *iapd)
+STATIC int get_ia_info(struct serv_ipv6 *si6, char *config_file, ia_na_t *iana, ia_pd_t *iapd)
 {
     char action[64] = {0};
     
@@ -563,7 +568,7 @@ static int get_ia_info(struct serv_ipv6 *si6, char *config_file, ia_na_t *iana, 
     return 0;
 }
 
-static int get_prefix_info(const char *prefix,  char *value, unsigned int val_len, unsigned int *prefix_len)
+STATIC int get_prefix_info(const char *prefix,  char *value, unsigned int val_len, unsigned int *prefix_len)
 {
     int i;
 
@@ -592,7 +597,7 @@ static int get_prefix_info(const char *prefix,  char *value, unsigned int val_le
 /* get the interfaces which need to assign /64 interface-prefix
  * suppose we currently use syscfg "lan_pd_interfaces" to represent the interfaces need to prefix delegation
  */
-static int get_active_lanif(struct serv_ipv6 *si6, unsigned int insts[], unsigned int *num)
+STATIC int get_active_lanif(struct serv_ipv6 *si6, unsigned int insts[], unsigned int *num)
 {
     int i = 0;
 #if !defined(MULTILAN_FEATURE) || defined CISCO_CONFIG_DHCPV6_PREFIX_DELEGATION
@@ -719,7 +724,6 @@ static int get_active_lanif(struct serv_ipv6 *si6, unsigned int insts[], unsigne
 
     sysevent_get(si6->sefd, si6->setok, "multinet-instances", active_insts, sizeof(active_insts));
     p = strtok(active_insts, " ");
-
     while (p != NULL) {
         snprintf(buf, sizeof(buf), "multinet_%s-name", p);
         sysevent_get(si6->sefd, si6->setok, buf, if_name, sizeof(if_name));
@@ -737,7 +741,7 @@ static int get_active_lanif(struct serv_ipv6 *si6, unsigned int insts[], unsigne
     return *num;
 }
 
-static int get_pd_pool(struct serv_ipv6 *si6, pd_pool_t *pool)
+STATIC int get_pd_pool(struct serv_ipv6 *si6, pd_pool_t *pool)
 {
     char evt_val[256];
     errno_t rc = -1;
@@ -782,7 +786,7 @@ static int get_pd_pool(struct serv_ipv6 *si6, pd_pool_t *pool)
 /*
  * Break the prefix provisoned from wan to sub-prefixes based on favor width/depth and topology mode
  */
-static int divide_ipv6_prefix(struct serv_ipv6 *si6)
+STATIC int divide_ipv6_prefix(struct serv_ipv6 *si6)
 {
     ipv6_prefix_t       mso_prefix;
     ipv6_prefix_t       *sub_prefixes = NULL;
@@ -1082,7 +1086,7 @@ int compute_global_ip(char *prefix, char *if_name, char *ipv6_addr, unsigned int
  /*
  *Report that one LAN didn't get an IPv6 prefix
  */
-static void report_no_prefix(int i)
+STATIC void report_no_prefix(int i)
 {
     vsystem("%s %d", EROUTER_NO_PREFIX_MESSAGE, i);
 }
@@ -1090,7 +1094,7 @@ static void report_no_prefix(int i)
 /*
  *In case prefix assignment completely fails, report failure for all LANs
  */
-static void report_no_lan_prefixes(struct serv_ipv6 *si6)
+STATIC void report_no_lan_prefixes(struct serv_ipv6 *si6)
 {
     unsigned int enabled_iface_num = 0;
     unsigned int l2_insts[MAX_LAN_IF_NUM] = {0};
@@ -1110,7 +1114,7 @@ static void report_no_lan_prefixes(struct serv_ipv6 *si6)
  * Iterate through all enabled L3 IPv6 instances and set the proper MTU for each
  */
 #if defined(INTEL_PUMA7)
-static void update_mtu(void){
+STATIC void update_mtu(void){
     int instance_ret = 0;
     int enable_ret = 0;
     int mtu_ret = 0;
@@ -1229,7 +1233,7 @@ static void update_mtu(void){
 /*
  *Assign IPv6 address for lan interface from the corresponding interface-prefix
  */
-static int lan_addr6_set(struct serv_ipv6 *si6)
+STATIC int lan_addr6_set(struct serv_ipv6 *si6)
 {
     unsigned int l2_insts[MAX_LAN_IF_NUM] = {0};
 #if defined(MULTILAN_FEATURE)
@@ -1374,7 +1378,7 @@ static int lan_addr6_set(struct serv_ipv6 *si6)
     return 0;
 }
 
-static int lan_addr6_unset(struct serv_ipv6 *si6)
+STATIC int lan_addr6_unset(struct serv_ipv6 *si6)
 {
     unsigned int l2_insts[MAX_LAN_IF_NUM] = {0};
     char if_name[16] = {0};
@@ -1463,7 +1467,7 @@ static int lan_addr6_unset(struct serv_ipv6 *si6)
 }
 
 #ifdef _HUB4_PRODUCT_REQ_
-static int getLanUlaInfo(int *ula_enable)
+STATIC int getLanUlaInfo(int *ula_enable)
 {
     char  *pUla_enable = NULL;
 
@@ -1484,7 +1488,7 @@ static int getLanUlaInfo(int *ula_enable)
 }
 #endif
 
-static int format_dibbler_option(char *option)
+STATIC int format_dibbler_option(char *option)
 {
     if (option == NULL)
         return -1;
@@ -1505,7 +1509,7 @@ static int format_dibbler_option(char *option)
  *      IA-NA/IA-PD lifetime
  *      Options: RDNSS, DNSSL, SNTP, (CONTAINER option)
  */
-static int gen_dibbler_conf(struct serv_ipv6 *si6)
+STATIC int gen_dibbler_conf(struct serv_ipv6 *si6)
 {
     dhcpv6s_cfg_t       dhcpv6s_cfg = {0,0,0};
     dhcpv6s_pool_cfg_t  dhcpv6s_pool_cfg;
@@ -1556,9 +1560,7 @@ static int gen_dibbler_conf(struct serv_ipv6 *si6)
     fp = fopen(DHCPV6S_CONF_FILE, "w+");
     if (fp == NULL)
         return -1;
-
     /*Begin write dibbler configurations*/
-
     {
         char buf[12];
         int log_level = 4;
@@ -1607,14 +1609,12 @@ static int gen_dibbler_conf(struct serv_ipv6 *si6)
 #ifdef MULTILAN_FEATURE
     fprintf(fp, "reconfigure-enabled 1\n");
 #endif
-
     get_dhcpv6s_conf(&dhcpv6s_cfg);
     if (dhcpv6s_cfg.server_type != DHCPV6S_TYPE_STATEFUL)
         fprintf(fp, "stateless\n");
     
     /*get ia_na & ia_pd info (addr, t1, t2, preftm, vldtm) which passthrough wan*/
     ret = get_ia_info(si6, PROVISIONED_V6_CONFIG_FILE, &ia_na, &ia_pd);
-
     for (pool_index = 0; pool_index < dhcpv6s_cfg.pool_num; pool_index++) {
         dhcpv6s_pool_cfg.index = pool_index;
         if (get_dhcpv6s_pool_cfg(si6, &dhcpv6s_pool_cfg) != 0)
@@ -1942,7 +1942,7 @@ OPTIONS:
     return 0;
 }
 
-static int dhcpv6s_start(struct serv_ipv6 *si6)
+STATIC int dhcpv6s_start(struct serv_ipv6 *si6)
 {
 #ifdef MULTILAN_FEATURE
 #if defined(_COSA_FOR_BCI_)
@@ -1976,7 +1976,7 @@ static int dhcpv6s_start(struct serv_ipv6 *si6)
     return 0;
 }
 
-static int dhcpv6s_stop(struct serv_ipv6 *si6)
+STATIC int dhcpv6s_stop(struct serv_ipv6 *si6)
 {
 #ifdef MULTILAN_FEATURE
     return daemon_stop(DHCPV6S_PID_FILE, DHCPV6_SERVER);
@@ -1985,7 +1985,7 @@ static int dhcpv6s_stop(struct serv_ipv6 *si6)
 #endif
 }
 
-static int dhcpv6s_restart(struct serv_ipv6 *si6)
+STATIC int dhcpv6s_restart(struct serv_ipv6 *si6)
 {
     if (dhcpv6s_stop(si6) != 0)
         fprintf(stderr, "%s: dhcpv6s_stop error\n", __FUNCTION__);
@@ -1994,7 +1994,7 @@ static int dhcpv6s_restart(struct serv_ipv6 *si6)
 }
 
 
-static int serv_ipv6_start(struct serv_ipv6 *si6)
+STATIC int serv_ipv6_start(struct serv_ipv6 *si6)
 {
     char rtmod[16];
 
@@ -2012,7 +2012,6 @@ static int serv_ipv6_start(struct serv_ipv6 *si6)
     } else {/* IPv4-only */
         return 0;
     }
-
     sysevent_set(si6->sefd, si6->setok, "service_ipv6-status", "starting", 0);
 
     /* Fix for IPv6 prefix not getting updated in dibbler server conf file on WAN mode  change */    
@@ -2068,7 +2067,7 @@ static int serv_ipv6_start(struct serv_ipv6 *si6)
     return 0;
 }
 
-static int serv_ipv6_stop(struct serv_ipv6 *si6)
+STATIC int serv_ipv6_stop(struct serv_ipv6 *si6)
 {
     if (!serv_can_stop(si6->sefd, si6->setok, "service_ipv6"))
         return -1;
@@ -2094,7 +2093,7 @@ static int serv_ipv6_stop(struct serv_ipv6 *si6)
     return 0;
 }
 
-static int serv_ipv6_restart(struct serv_ipv6 *si6)
+STATIC int serv_ipv6_restart(struct serv_ipv6 *si6)
 {
     if (serv_ipv6_stop(si6) != 0)
         fprintf(stderr, "%s: serv_ipv6_stop error\n", __FUNCTION__);
@@ -2102,7 +2101,7 @@ static int serv_ipv6_restart(struct serv_ipv6 *si6)
     return serv_ipv6_start(si6);
 }
 
-static int serv_ipv6_init(struct serv_ipv6 *si6)
+STATIC int serv_ipv6_init(struct serv_ipv6 *si6)
 {
     char buf[16];
 #if defined(MULTILAN_FEATURE) || defined(_HUB4_PRODUCT_REQ_)
@@ -2166,7 +2165,7 @@ static int serv_ipv6_init(struct serv_ipv6 *si6)
     return 0;
 }
 
-static int serv_ipv6_term(struct serv_ipv6 *si6)
+STATIC int serv_ipv6_term(struct serv_ipv6 *si6)
 {
     sysevent_close(si6->sefd, si6->setok);
 #if defined(MULTILAN_FEATURE) || defined(_HUB4_PRODUCT_REQ_)
@@ -2201,7 +2200,7 @@ static struct cmd_op cmd_ops[] = {
     {"dhcpv6s-restart",dhcpv6s_restart,   "restart DHCPv6 Server"},
 };
 
-static void usage(void)
+STATIC void usage(void)
 {
     int i;
 
@@ -2212,7 +2211,7 @@ static void usage(void)
         fprintf(stderr, "    %-20s%s\n", cmd_ops[i].cmd, cmd_ops[i].desc);
 }
 
-int main(int argc, char *argv[])
+int service_ipv6_main(int argc, char *argv[])
 {
     int i;
     struct serv_ipv6 si6;

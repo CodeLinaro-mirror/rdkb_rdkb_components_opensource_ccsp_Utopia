@@ -31,6 +31,16 @@
 #include <arpa/inet.h>
 #include <libnet.h>
 
+#ifndef UNIT_TEST_DOCKER_SUPPORT
+    #define STATIC static
+#else
+    #define STATIC
+
+    extern FILE* fopen_mock(const char* filename, const char* mode);
+    #define fopen                     fopen_mock    // Mock fopen for testing
+
+#endif
+
 #ifdef FEATURE_SUPPORT_ONBOARD_LOGGING
 #include <rdk_debug.h>
 #define LOGGING_MODULE "Utopia"

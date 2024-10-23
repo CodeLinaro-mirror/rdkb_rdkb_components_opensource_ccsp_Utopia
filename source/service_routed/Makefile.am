@@ -21,7 +21,7 @@ bin_PROGRAMS = service_routed
 
 AM_LDFLAGS = -lsecure_wrapper
 
-service_routed_SOURCES = service_routed.c
+service_routed_SOURCES = service_routed.c service_routed_main.c
 
 service_routed_CFLAGS = -I$(top_srcdir)/source \
                         -I$(top_srcdir)/source/include \

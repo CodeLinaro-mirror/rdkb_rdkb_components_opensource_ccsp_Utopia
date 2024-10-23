@@ -16,14 +16,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-AM_CFLAGS =
 
-AM_CXXFLAGS = -std=c++11
-
-ACLOCAL_AMFLAGS = -I m4
-
-bin_PROGRAMS = Utopia_gtest.bin
-
-Utopia_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I${top_srcdir}/gtest/include -I${top_srcdir}/source/include -I${top_srcdir}/source
-Utopia_gtest_bin_SOURCES = gtest_main.cpp UtopiaTest.cpp
-Utopia_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov
+SUBDIRS = service_routed service_ipv6 service_udhcpc service_dhcp service_wan

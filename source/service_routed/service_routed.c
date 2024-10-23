@@ -61,6 +61,7 @@
 
 #include "util.h"
 #include <telemetry_busmessage_sender.h>
+#include "sysevent/sysevent.h"
 #include "syscfg/syscfg.h"
 #if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 #include "utapi.h"
@@ -74,6 +75,12 @@ static const char* const service_routed_component_id = "ccsp.routed";
 #endif
 #include "secure_wrapper.h"
 #define PROG_NAME       "SERVICE-ROUTED"
+
+#ifdef UNIT_TEST_DOCKER_SUPPORT 
+#define STATIC 
+#else 
+#define STATIC static 
+#endif
 
 #define ZEBRA_PID_FILE  "/var/zebra.pid"
 #define RIPD_PID_FILE   "/var/ripd.pid"
@@ -89,7 +96,7 @@ static const char* const service_routed_component_id = "ccsp.routed";
 #if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 #define CCSP_SUBSYS  "eRT."
 #define PSM_VALUE_GET_STRING(name, str) PSM_Get_Record_Value2(bus_handle, CCSP_SUBSYS, name, NULL, &(str))
-static void* bus_handle = NULL;
+STATIC void* bus_handle = NULL;
 #endif
 
 #if defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_))
@@ -97,7 +104,7 @@ static void* bus_handle = NULL;
 #define PSM_LANMANAGEMENTENTRY_LAN_IPV6_ENABLE "dmsb.lanmanagemententry.lanipv6enable"
 #define PSM_LANMANAGEMENTENTRY_LAN_ULA_ENABLE  "dmsb.lanmanagemententry.lanulaenable"
 #define SYSEVENT_VALID_ULA_ADDRESS "valid_ula_address"
-static int getULAAddressFromInterface(char *ulaAddress);
+STATIC int getULAAddressFromInterface(char *ulaAddress);
 #endif
 
 #ifdef MULTILAN_FEATURE
@@ -129,7 +136,7 @@ struct serv_routed {
 }\
 
 #define RIPD_CONF_PAM_UPDATE "/tmp/pam_ripd_config_completed"
-static int IsFileExists(char *file_name)
+STATIC int IsFileExists(char *file_name)
 {
     struct stat file;
     return (stat(file_name, &file));
@@ -174,7 +181,7 @@ int GetDeviceNetworkMode()
 }
 #endif
 
-static int fw_restart(struct serv_routed *sr)
+STATIC int fw_restart(struct serv_routed *sr)
 {
     char val[16];
     char wan_if[IFNAMSIZ];
@@ -195,7 +202,7 @@ static int fw_restart(struct serv_routed *sr)
 
 #if defined (_HUB4_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) || defined (FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 
-static int dbusInit( void )
+STATIC int dbusInit( void )
 {
     int ret = 0;
     char* pCfg = CCSP_MSG_BUS_CFG;
@@ -228,7 +235,7 @@ static int dbusInit( void )
 
 #if defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_))
 
-static int getLanIpv6Info(int *ipv6_enable, int *ula_enable)
+STATIC int getLanIpv6Info(int *ipv6_enable, int *ula_enable)
 {
     char *pIpv6_enable, *pUla_enable;
 
@@ -261,7 +268,7 @@ static int getLanIpv6Info(int *ipv6_enable, int *ula_enable)
 
     return 0;
 }
-static int getULAAddressFromInterface(char *ulaAddress)
+STATIC int getULAAddressFromInterface(char *ulaAddress)
 {
     int status = FALSE;
     FILE *fpStream = NULL;
@@ -299,7 +306,7 @@ static int getULAAddressFromInterface(char *ulaAddress)
 }
 
 #endif
-static int daemon_stop(const char *pid_file, const char *prog)
+STATIC int daemon_stop(const char *pid_file, const char *prog)
 {
     FILE *fp;
     char pid_str[10];
@@ -330,7 +337,7 @@ static int daemon_stop(const char *pid_file, const char *prog)
 }
 
 /* SKYH4-1765: checks the daemon running status */
-static int is_daemon_running(const char *pid_file, const char *prog)
+STATIC int is_daemon_running(const char *pid_file, const char *prog)
 {
     FILE *fp;
     char pid_str[10];
@@ -359,7 +366,7 @@ static int is_daemon_running(const char *pid_file, const char *prog)
 }
 
 #ifdef MULTILAN_FEATURE
-static int get_active_lanif(int sefd, token_t setok, unsigned int *insts, unsigned int *num)
+STATIC int get_active_lanif(int sefd, token_t setok, unsigned int *insts, unsigned int *num)
 {
     char active_insts[32] = {0};
     char *p = NULL;
@@ -407,7 +414,7 @@ static int get_active_lanif(int sefd, token_t setok, unsigned int *insts, unsign
 }
 #else
 #ifdef CISCO_CONFIG_DHCPV6_PREFIX_DELEGATION
-static int get_active_lanif(int sefd, token_t setok, unsigned int *insts, unsigned int *num)
+STATIC int get_active_lanif(int sefd, token_t setok, unsigned int *insts, unsigned int *num)
 {
     char active_insts[32] = {0};
     char lan_pd_if[128] = {0};
@@ -443,7 +450,7 @@ static int get_active_lanif(int sefd, token_t setok, unsigned int *insts, unsign
 #endif
 #endif
 
-static int route_set(struct serv_routed *sr)
+STATIC int route_set(struct serv_routed *sr)
 {
 #if defined(CISCO_CONFIG_DHCPV6_PREFIX_DELEGATION) || defined(MULTILAN_FEATURE)
     unsigned int l2_insts[4] = {0};
@@ -537,7 +544,7 @@ while (retry_count < max_retries) {
 }
 
 
-static int route_unset(struct serv_routed *sr)
+STATIC int route_unset(struct serv_routed *sr)
 {
     char wanIface[64] = {'\0'};
     sysevent_get(sr->sefd, sr->setok, "current_wan_ifname", wanIface, sizeof(wanIface));
@@ -581,7 +588,7 @@ static int route_unset(struct serv_routed *sr)
 
 #if 0
 #ifdef RDKB_EXTENDER_ENABLED
-static int updateExtenderConf(FILE *pFp, int sefd, token_t setok, int deviceMode, char *pInterface_name)
+STATIC int updateExtenderConf(FILE *pFp, int sefd, token_t setok, int deviceMode, char *pInterface_name)
 {
  
     if (!pFp || !pInterface_name)
@@ -655,7 +662,7 @@ static int updateExtenderConf(FILE *pFp, int sefd, token_t setok, int deviceMode
 #endif
 #endif
 
-static int gen_zebra_conf(int sefd, token_t setok)
+STATIC int gen_zebra_conf(int sefd, token_t setok)
 {
     char l_cSecWebUI_Enabled[8] = {0};
     syscfg_get(NULL, "SecureWebUI_Enable", l_cSecWebUI_Enabled, sizeof(l_cSecWebUI_Enabled));
@@ -728,7 +735,7 @@ static int gen_zebra_conf(int sefd, token_t setok)
     int nopt, j = 0; /*RDKB-12965 & CID:-34147*/
     char lan_if[IFNAMSIZ];
     char *start, *tok, *sp;
-    static const char *zebra_conf_base = \
+    STATIC const char *zebra_conf_base = \
         "!enable password admin\n"
         "!log stdout\n"
         "log file /var/tmp/zebra.log errors\n"
@@ -1627,7 +1634,7 @@ if(!strncmp(out,"true",strlen(out)))
     return 0;
 }
 
-static int gen_ripd_conf(int sefd, token_t setok)
+STATIC int gen_ripd_conf(int sefd, token_t setok)
 {
     /* should be similar to CosaDmlGenerateRipdConfigFile(), 
      * but there're too many dependencies for that function.
@@ -1638,7 +1645,7 @@ static int gen_ripd_conf(int sefd, token_t setok)
 #ifdef WAN_FAILOVER_SUPPORTED
 
 // Function to check if ULA is enabled, If ULA is enabled we will broadcast ULA prefix
-static int checkIfULAEnabled(int sefd, token_t setok)
+STATIC int checkIfULAEnabled(int sefd, token_t setok)
 {
     // temp check , need to replace with CurrInterface Name or if device is XLE
      char buf[16]={0};
@@ -1662,7 +1669,7 @@ static int checkIfULAEnabled(int sefd, token_t setok)
 
 // Function to check if IPV6 mode is switched between ULA and Global, If mode is switched we need to broadcast old prefix with 0 lifetime
 
-static void checkIfModeIsSwitched(int sefd, token_t setok)
+STATIC void checkIfModeIsSwitched(int sefd, token_t setok)
 {
     char ipv6_pref_mode[16]={0};
     char buf[16]={0};
@@ -1695,7 +1702,7 @@ static void checkIfModeIsSwitched(int sefd, token_t setok)
 }
 
 #endif 
-static int radv_start(struct serv_routed *sr)
+STATIC int radv_start(struct serv_routed *sr)
 {
 
 #ifdef RDKB_EXTENDER_ENABLED
@@ -1794,7 +1801,7 @@ static int radv_start(struct serv_routed *sr)
     return 0;
 }
 
-static int radv_stop(struct serv_routed *sr)
+STATIC int radv_stop(struct serv_routed *sr)
 {
     if(is_daemon_running(ZEBRA_PID_FILE, "zebra"))
     {
@@ -1803,7 +1810,7 @@ static int radv_stop(struct serv_routed *sr)
     return daemon_stop(ZEBRA_PID_FILE, "zebra");
 }
 
-static int radv_restart(struct serv_routed *sr)
+STATIC int radv_restart(struct serv_routed *sr)
 {
     if (radv_stop(sr) != 0){
         fprintf(logfptr, "%s: radv_stop error\n", __FUNCTION__);
@@ -1811,7 +1818,7 @@ static int radv_restart(struct serv_routed *sr)
     return radv_start(sr);
 }
 
-static int rip_start(struct serv_routed *sr)
+STATIC int rip_start(struct serv_routed *sr)
 {
     char enable[16];
 #if defined (_CBR_PRODUCT_REQ_) || defined (_BWG_PRODUCT_REQ_) || defined (_CBR2_PRODUCT_REQ_)
@@ -1873,7 +1880,7 @@ sleep(45); /*sleep upto update ripd.conf after reboot*/
     return 0;
 }
 
-static int rip_stop(struct serv_routed *sr)
+STATIC int rip_stop(struct serv_routed *sr)
 {
     if (!serv_can_stop(sr->sefd, sr->setok, "rip"))
         return -1;
@@ -1889,7 +1896,7 @@ static int rip_stop(struct serv_routed *sr)
     return 0;
 }
 
-static int rip_restart(struct serv_routed *sr)
+STATIC int rip_restart(struct serv_routed *sr)
 {
     if (rip_stop(sr) != 0){
         fprintf(logfptr, "%s: rip_stop error\n", __FUNCTION__);
@@ -1897,7 +1904,7 @@ static int rip_restart(struct serv_routed *sr)
     return rip_start(sr);
 }
 
-static int serv_routed_start(struct serv_routed *sr)
+STATIC int serv_routed_start(struct serv_routed *sr)
 {
 #if !defined (_HUB4_PRODUCT_REQ_) || defined (_WNXL11BWL_PRODUCT_REQ_)
     char rtmod[16];
@@ -1961,7 +1968,7 @@ static int serv_routed_start(struct serv_routed *sr)
     return 0;
 }
 
-static int serv_routed_stop(struct serv_routed *sr)
+STATIC int serv_routed_stop(struct serv_routed *sr)
 {
     if (!serv_can_stop(sr->sefd, sr->setok, "routed"))
         return -1;
@@ -1984,7 +1991,7 @@ static int serv_routed_stop(struct serv_routed *sr)
     return 0;
 }
 
-static int serv_routed_restart(struct serv_routed *sr)
+STATIC int serv_routed_restart(struct serv_routed *sr)
 {
     if (serv_routed_stop(sr) != 0){
         fprintf(logfptr, "%s: serv_routed_stop error\n", __FUNCTION__);
@@ -1992,7 +1999,7 @@ static int serv_routed_restart(struct serv_routed *sr)
     return serv_routed_start(sr);
 }
 
-static int serv_routed_init(struct serv_routed *sr)
+STATIC int serv_routed_init(struct serv_routed *sr)
 {
     char wan_st[16], lan_st[16];
 
@@ -2015,36 +2022,36 @@ static int serv_routed_init(struct serv_routed *sr)
     return 0;
 }
 
-static int serv_routed_term(struct serv_routed *sr)
+STATIC int serv_routed_term(struct serv_routed *sr)
 {
     sysevent_close(sr->sefd, sr->setok);
     return 0;
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED
-static void AssignIpv6Addr(char* ifname , char* ipv6Addr,int prefix_len)
+STATIC void AssignIpv6Addr(char* ifname , char* ipv6Addr,int prefix_len)
 {
     v_secure_system("ip -6 addr add %s1/%d dev %s", ipv6Addr,prefix_len,ifname);
 }
 
-static void DelIpv6Addr(char* ifname , char* ipv6Addr,int prefix_len)
+STATIC void DelIpv6Addr(char* ifname , char* ipv6Addr,int prefix_len)
 {
     v_secure_system("ip -6 addr del %s1/%d dev %s", ipv6Addr,prefix_len,ifname);
 }
 
-static void SetV6Route(char* ifname , char* route_addr)
+STATIC void SetV6Route(char* ifname , char* route_addr)
 {
     v_secure_system("ip -6 route add %s dev %s", route_addr,ifname);
 }
 
-static void UnSetV6Route(char* ifname , char* route_addr)
+STATIC void UnSetV6Route(char* ifname , char* route_addr)
 {
     v_secure_system("ip -6 route del %s dev %s", route_addr,ifname);
 }
 
 // Function sets the route and assign the ULA address to lan interfaces
 
-static int routeset_ula(struct serv_routed *sr)
+STATIC int routeset_ula(struct serv_routed *sr)
 {
 
     char prefix[128] ;
@@ -2143,7 +2150,7 @@ return 0;
 
 
 // Function unsets the route and delete the ULA address assigned to lan interfaces
-static int routeunset_ula(struct serv_routed *sr)
+STATIC int routeunset_ula(struct serv_routed *sr)
 {
     char prefix[128] ;
     char lan_if[32] ;
@@ -2232,7 +2239,7 @@ struct cmd_op {
     const char  *desc;
 };
 
-static struct cmd_op cmd_ops[] = {
+STATIC struct cmd_op cmd_ops[] = {
     {"start",       serv_routed_start,  "start service route daemons"},
     {"stop",        serv_routed_stop,   "stop service route daemons"},
     {"restart",     serv_routed_restart,"restart service route daemons"},
@@ -2251,7 +2258,7 @@ static struct cmd_op cmd_ops[] = {
 
 };
 
-static void usage(void)
+STATIC void usage(void)
 {
     int i;
 
@@ -2264,7 +2271,7 @@ static void usage(void)
     }
 }
 
-int main(int argc, char *argv[])
+int service_routed_main(int argc, char *argv[])
 {
     int i;
     struct serv_routed sr;

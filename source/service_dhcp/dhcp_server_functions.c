@@ -35,6 +35,13 @@
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"
 
+#ifdef UNIT_TEST_DOCKER_SUPPORT
+#define STATIC
+#define STATIC_DNS_URLS_FILE    "/tmp/static_dns_urls"
+#else
+#define STATIC static
+#endif
+
 #define HOSTS_FILE              "/etc/hosts"
 #define HOSTNAME_FILE           "/etc/hostname"
 #define DHCP_STATIC_HOSTS_FILE  "/etc/dhcp_static_hosts"
@@ -82,7 +89,7 @@ extern void remove_file(char *);
 extern unsigned int mask2cidr(char *subnetMask);
 extern FILE* g_fArmConsoleLog; //Global file pointer declaration
 
-static unsigned int isValidSubnetMask(char *subnetMask);
+STATIC unsigned int isValidSubnetMask(char *subnetMask);
 
 enum interface{
     ExistWithSameRange,
@@ -95,7 +102,7 @@ enum interface{
  * Like 11111111.11111111.11100000.00000000. 
  * Which means first 19 bits of an IP address belongs to network part and rest is host part. 
  */
-static unsigned int isValidSubnetMask(char *subnetMask)
+STATIC unsigned int isValidSubnetMask(char *subnetMask)
 {
     int l_iIpAddrOctets[4] = {-1, -1, -1, -1};
 	char *ptr = subnetMask;
@@ -148,7 +155,7 @@ static unsigned int isValidSubnetMask(char *subnetMask)
 	return 1;
 }
 
-static int isValidLANIP(const char* ipStr)
+STATIC int isValidLANIP(const char* ipStr)
 {
         int octet1,octet2,octet3,octet4;
         struct sockaddr_in l_sSocAddr;

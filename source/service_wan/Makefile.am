@@ -19,7 +19,7 @@
 
 bin_PROGRAMS = service_wan
 
-service_wan_SOURCES = service_wan.c
+service_wan_SOURCES = service_wan.c service_wan_main.c
 
 service_wan_CPPFLAGS = -I$(top_srcdir)/source/include \
                        -I$(top_srcdir)/source/util/utils \

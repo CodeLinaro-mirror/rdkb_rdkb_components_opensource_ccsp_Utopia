@@ -24,7 +24,7 @@ if DSLITE_FEATURE_SUPPORT
 SUBDIRS += service_dslite
 endif
 
-if WITH_GTEST_SUPPORT
+if UNIT_TEST_DOCKER_SUPPORT
 SUBDIRS += test
 endif
 

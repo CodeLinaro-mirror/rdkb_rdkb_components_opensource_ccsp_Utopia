@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
+AUTOMAKE_OPTIONS = subdir-objects
 
 AM_CFLAGS = -I$(top_srcdir)/source/include \
             -I$(top_srcdir)/source/util \
