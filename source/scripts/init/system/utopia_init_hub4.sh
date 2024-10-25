@@ -679,5 +679,11 @@ sysevent set meshbhaul-setup 10
 #set ntp status as unsynchronized on bootup
 syscfg set ntp_status 2
 
+if [ "$FACTORY_RESET_REASON" = "true" ];then
+    # Remove on factory reset, prioratized schedule pcs.bin and pcs.bin.md5
+    rm -f /nvram/pcs-now-priomac.dat
+    rm -f /nvram/pcs-now-priomac.dat.md5
+fi
+
 echo "[utopia][init] completed creating utopia_inited flag"
 touch /tmp/utopia_inited
