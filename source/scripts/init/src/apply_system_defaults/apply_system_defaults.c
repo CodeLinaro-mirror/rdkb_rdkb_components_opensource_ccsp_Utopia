@@ -1392,8 +1392,43 @@ static void addInSysCfgdDB (char *key, char *value)
            IsPSMMigrationNeeded = 1;
        }
    }
-#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
 
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.BackupWanDns") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "BackupWanDnsSupport" ) )
+      {
+         set_syscfg_partner_values( value,"BackupWanDnsSupport" );
+         IsPSMMigrationNeeded = 1;
+      }
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.IPv6EUI64FormatSupport") )
+   {
+       if ( 0 == IsValuePresentinSyscfgDB( "IPv6EUI64FormatSupport" ) )
+       {
+           set_syscfg_partner_values( value,"IPv6EUI64FormatSupport" );
+           IsPSMMigrationNeeded = 1;
+       }
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.ConfigureWANIPv6OnLANBridgeSupport") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "ConfigureWANIPv6OnLANBridgeSupport" ) )
+      {
+         set_syscfg_partner_values( value,"ConfigureWANIPv6OnLANBridgeSupport" );
+         IsPSMMigrationNeeded = 1;
+      }
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.UseWANMACForManagementServices") )
+   {
+       if ( 0 == IsValuePresentinSyscfgDB( "UseWANMACForManagementServices" ) )
+       {
+           set_syscfg_partner_values( value,"UseWANMACForManagementServices" );
+           IsPSMMigrationNeeded = 1;
+       }
+   }
+#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
 
    //Check whether migration needs to be handled or not
    if( 1 == IsPSMMigrationNeeded )
@@ -1553,7 +1588,31 @@ static void updateSysCfgdDB (char *key, char *value)
       set_syscfg_partner_values( value,"LANULASupport" );
       IsPSMMigrationNeeded = 1;
    }
-#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.BackupWanDns") )
+   {
+      set_syscfg_partner_values( value,"BackupWanDnsSupport" );
+      IsPSMMigrationNeeded = 1;
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.IPv6EUI64FormatSupport") )
+   {
+      set_syscfg_partner_values( value,"IPv6EUI64FormatSupport" );
+      IsPSMMigrationNeeded = 1;
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.ConfigureWANIPv6OnLANBridgeSupport") )
+   {
+      set_syscfg_partner_values( value,"ConfigureWANIPv6OnLANBridgeSupport" );
+      IsPSMMigrationNeeded = 1;
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.UseWANMACForManagementServices") )
+   {
+      set_syscfg_partner_values( value,"UseWANMACForManagementServices" );
+      IsPSMMigrationNeeded = 1;
+   }
+#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
 
    //Check whether migration needs to be handled or not
    if( 1 == IsPSMMigrationNeeded )
@@ -2441,7 +2500,75 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
                                                       APPLY_PRINT("%s - lanulaSupport Value is NULL\n", __FUNCTION__ );
                                              }
                                         }
-#endif
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.BackupWanDns"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *tmpValue = NULL;
+                                                tmpValue = paramObjVal->valuestring;
+
+                                                if (tmpValue != NULL)
+                                                {
+                                                         set_syscfg_partner_values(tmpValue,"BackupWanDnsSupport");
+                                                         tmpValue = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - BackupWanDnsSupport Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.IPv6EUI64FormatSupport"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *tmpValue = NULL;
+                                                tmpValue = paramObjVal->valuestring;
+
+                                                if (tmpValue != NULL)
+                                                {
+                                                         set_syscfg_partner_values(tmpValue,"IPv6EUI64FormatSupport");
+                                                         tmpValue = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - IPv6EUI64FormatSupport Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.ConfigureWANIPv6OnLANBridgeSupport"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *tmpValue = NULL;
+                                                tmpValue = paramObjVal->valuestring;
+
+                                                if (tmpValue != NULL)
+                                                {
+                                                         set_syscfg_partner_values(tmpValue,"ConfigureWANIPv6OnLANBridgeSupport");
+                                                         tmpValue = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - ConfigureWANIPv6OnLANBridgeSupport Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.UseWANMACForManagementServices"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *tmpValue = NULL;
+                                                tmpValue = paramObjVal->valuestring;
+
+                                                if (tmpValue != NULL)
+                                                {
+                                                         set_syscfg_partner_values(tmpValue,"UseWANMACForManagementServices");
+                                                         tmpValue = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - UseWANMACForManagementServices Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
                                 }
 
 				if( 1 == isNeedToApplyPartnersDefault )
