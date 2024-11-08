@@ -1102,6 +1102,99 @@ static int addParamInPartnersFile (char *pKey, char *PartnerId, char *pValue)
 	 return 0;
 }
 
+/** ApplyPartnersObjectItemsIntoSysevents() */
+static int ApplyPartnersObjectItemsIntoSysevents( char *pcPartnerID )
+{
+   if( NULL == pcPartnerID )
+   {
+      APPLY_PRINT("%s-%d, Error: PartnerID Value is NULL so unable to proceed for \n", __FUNCTION__,__LINE__);
+      return -1;
+   }
+
+   APPLY_PRINT("%s-%d, For PartnerID:%s from '%s' file\n", __FUNCTION__, __LINE__, pcPartnerID, PARTNERS_INFO_FILE_ETC);
+
+   char  *ptr_etc_json       = json_file_parse( PARTNERS_INFO_FILE_ETC );
+   cJSON *pCJsonRootEtc      = cJSON_Parse( ptr_etc_json );
+
+   if( NULL != pCJsonRootEtc )
+   {
+      //cJSON *pCJsonProp           = cJSON_GetObjectItem( pCJsonRootEtc, "properties" );
+      cJSON *pCJsonSubitemEtc   = cJSON_GetObjectItem( pCJsonRootEtc, pcPartnerID );
+
+      if ( NULL != pCJsonSubitemEtc )
+      {
+         cJSON *pCJsonApplytoSyseventsBlock  = cJSON_GetObjectItem( pCJsonSubitemEtc, "apply_value_to_sysevent" );
+
+         if( NULL != pCJsonApplytoSyseventsBlock )
+         {
+            char  *key = NULL, *value = NULL;
+            cJSON *pCJsonChildParam     = pCJsonApplytoSyseventsBlock->child;
+
+            while( pCJsonChildParam )
+            {
+               key = pCJsonChildParam->string;
+               cJSON * value_obj = cJSON_GetObjectItem(pCJsonApplytoSyseventsBlock, key);
+
+               if (value_obj)
+                  value = value_obj->valuestring;
+
+               if (value == NULL)
+               {
+                  APPLY_PRINT("%s-%d, Value is NULL for key = %s, skip it...\n", __FUNCTION__, __LINE__, key);
+                  pCJsonChildParam = pCJsonChildParam->next;
+                  continue;
+               }
+
+               APPLY_PRINT("%s, Applying Key = %s Value = %s to sysevents\n", __FUNCTION__, key, value);
+
+               if ( 0 == strcmp ( key, "Device.X_RDK_Features.NTPHealthCheck") )
+               {
+                  sysevent_set (global_fd, global_id, "NTPHealthCheckSupport", value, 0);
+               }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.SelfhelpWANConnectionDiag") )
+               {
+                  sysevent_set (global_fd, global_id, "SelfhelpWANConnectionDiagSupport", value, 0);
+               }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.LANIPv6GUA") )
+               {
+                  sysevent_set (global_fd, global_id, "LANIPv6GUASupport", value, 0);
+               }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.HarvesterTimeOffset") )
+               {
+                  sysevent_set (global_fd, global_id, "HarvesterTimeOffsetSupport", value, 0);
+               }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.HarvesterScanPublicWiFi") )
+               {
+                  sysevent_set (global_fd, global_id, "HarvesterScanPublicWiFiSupport", value, 0);
+               }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.HomeSecurity.Enable") )
+               {
+                  sysevent_set (global_fd, global_id, "HomeSecuritySupport", value, 0);
+               }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.GatewayFailover.Enable") )
+               {
+                  sysevent_set (global_fd, global_id, "GatewayFailoverSupport", value, 0);
+               }
+
+               pCJsonChildParam = pCJsonChildParam->next;
+            }
+         }
+      }
+
+      //Free allocated resource
+      cJSON_Delete(pCJsonRootEtc);
+   }
+
+   //Free allocated resource
+   if( NULL != ptr_etc_json )
+   {
+      free(ptr_etc_json);
+      ptr_etc_json = NULL;
+   }
+
+   return 0;
+}
+
 static void addInSysCfgdDB (char *key, char *value)
 {
    /* There are parameters which needs to be available in syscfg/PSM DBs
@@ -1277,6 +1370,26 @@ static void addInSysCfgdDB (char *key, char *value)
    }
    #endif
 
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.WANConnectivityCheckType") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "ConnectivityCheckType" ) )
+      {
+         set_syscfg_partner_values( value,"ConnectivityCheckType" );
+         IsPSMMigrationNeeded = 1;
+      }
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.LANIPv6ULA") )
+   {
+       if ( 0 == IsValuePresentinSyscfgDB( "LANULASupport" ) )
+       {
+           set_syscfg_partner_values( value,"LANULASupport" );
+           IsPSMMigrationNeeded = 1;
+       }
+   }
+#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
+
 
    //Check whether migration needs to be handled or not
    if( 1 == IsPSMMigrationNeeded )
@@ -1424,6 +1537,20 @@ static void updateSysCfgdDB (char *key, char *value)
       }
 #endif
 
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.WANConnectivityCheckType") )
+   {
+      set_syscfg_partner_values( value,"ConnectivityCheckType" );
+      IsPSMMigrationNeeded = 1;
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.LANIPv6ULA") )
+   {
+      set_syscfg_partner_values( value,"LANULASupport" );
+      IsPSMMigrationNeeded = 1;
+   }
+#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
+
    //Check whether migration needs to be handled or not
    if( 1 == IsPSMMigrationNeeded )
    {
@@ -1472,6 +1599,13 @@ static int init_bootstrap_json (char *partner_nvram_obj, char *partner_etc_obj, 
          if (!strncmp(key, "no_apply_system_default", 23))
          {
             APPLY_PRINT("%s - Skipping no_apply_system_default\n", __FUNCTION__);
+            param = param->next;
+            continue;
+         }
+
+         if (!strncmp(key, "apply_value_to_sysevent", 23))
+         {
+            APPLY_PRINT("%s - Skipping DB update for apply_value_to_sysevent block\n", __FUNCTION__);
             param = param->next;
             continue;
          }
@@ -1607,12 +1741,14 @@ static int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
    cJSON * subitem_nvram_bs = cJSON_GetObjectItem(root_nvram_bs_json,PartnerID);
    cJSON * overrideObj = NULL;
    cJSON * notApplyObj = NULL;
+   cJSON * ApplySyseventObj = NULL;
    char *key=NULL, *value=NULL;
    char devModel[20] = "\0";
 
    GetDevicePropertiesEntry (devModel, sizeof(devModel), "MODEL_NUM");
    overrideObj = cJSON_GetObjectItem (cJSON_GetObjectItem(subitem_etc, "override"), devModel);
    notApplyObj = cJSON_GetObjectItem (cJSON_GetObjectItem(subitem_etc, "no_apply_system_default"), devModel);
+   ApplySyseventObj = cJSON_GetObjectItem (subitem_etc, "apply_value_to_sysevent");
 
    if( subitem_etc )
    {
@@ -1625,6 +1761,13 @@ static int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
          if (!strncmp(key, "no_apply_system_default", 23))
          {
             APPLY_PRINT("%s - Skipping no_apply_system_default\n", __FUNCTION__);
+            param = param->next;
+            continue;
+         }
+
+         if (!strncmp(key, "apply_value_to_sysevent", 23))
+         {
+            APPLY_PRINT("%s - Skipping DB update for apply_value_to_sysevent block\n", __FUNCTION__);
             param = param->next;
             continue;
          }
@@ -1732,7 +1875,7 @@ static int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
          if nvram has more entries, we may need to check what was
          removed from etc in current release.
       */
-      int subitem_etc_count = cJSON_GetArraySize(subitem_etc) - !(!overrideObj) - !(!notApplyObj);
+      int subitem_etc_count = cJSON_GetArraySize(subitem_etc) - !(!overrideObj) - !(!notApplyObj) - !(!ApplySyseventObj);
       int subitem_nvram_bs_count = cJSON_GetArraySize(subitem_nvram_bs);
       int iCount = 0;
       if ( subitem_etc_count < subitem_nvram_bs_count)
@@ -2256,6 +2399,42 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
                                                 APPLY_PRINT( "%s - OAUTHServerUrl is NULL\n", __FUNCTION__ );
                                             }
                                         }
+
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.WANConnectivityCheckType"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *check_connection_type = NULL;
+                                                check_connection_type = paramObjVal->valuestring;
+
+                                                if (check_connection_type != NULL)
+                                                {
+                                                         set_syscfg_partner_values(check_connection_type,"ConnectivityCheckType");
+                                                         check_connection_type = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - ConnectivityCheckType Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.LANIPv6ULA"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                             char *lanulaSupport = NULL;
+                                             lanulaSupport = paramObjVal->valuestring;
+
+                                             if (lanulaSupport != NULL)
+                                             {
+                                                      set_syscfg_partner_values(lanulaSupport,"LANULASupport");
+                                                      lanulaSupport = NULL;
+                                             }
+                                             else
+                                             {
+                                                      APPLY_PRINT("%s - lanulaSupport Value is NULL\n", __FUNCTION__ );
+                                             }
+                                        }
+#endif
                                 }
 
 				if( 1 == isNeedToApplyPartnersDefault )
@@ -2624,8 +2803,6 @@ int main( int argc, char **argv )
       APPLY_PRINT("Number_Of_Entries_Commited_to_Sysconfig_Database=%d\n",syscfg_dirty);
    }
 
-   sysevent_close(global_fd, global_id);
-
 #if defined(_SYNDICATION_BUILDS_)
    v_secure_system( "/lib/rdk/apply_partner_customization.sh" );
 #endif
@@ -2736,6 +2913,14 @@ int main( int argc, char **argv )
 		if( NULL != db_val )
 		free( db_val );
    }
+
+   /** Applying Partners Objects into Sysevents */
+   if( 0 != ApplyPartnersObjectItemsIntoSysevents( PartnerID ) )
+   {
+      APPLY_PRINT("%s - Failed to apply_value_to_sysevent block into sysevent for '%s'\n", __FUNCTION__, PartnerID);
+   }
+
+   sysevent_close(global_fd, global_id);
 
    return(0);
 }
