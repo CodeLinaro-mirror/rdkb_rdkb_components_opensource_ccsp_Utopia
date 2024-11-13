@@ -647,6 +647,14 @@ enum{
 static void wanmgr_get_wan_interface(char *wanInterface);
 #endif
 
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
+#define SYSEVENT_VOICE_IPV6_PROXYLIST "voice_ipv6_outbound_proxy_addresses"
+#define SYSEVENT_VOICE_IPV6_RTPLIST "voice_ipv6_rtp_pinholes"
+#define SYSEVENT_VOICE_IPV6_ETHERNETPRIORITY "voice_ipv6_ethernetpriority"
+#define SYSEVENT_VOICE_IPV6_DSCP "voice_ipv6_dscp"
+static int do_telcovoice_rules_v6(FILE *filter_fp, FILE *mangle_fp);
+#endif
+
 /*
  * Service event mapping table
  */
@@ -14959,6 +14967,10 @@ int prepare_ipv6_firewall(const char *fw_file)
 #endif
    #endif
 
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
+   do_telcovoice_rules_v6(filter_fp,mangle_fp);
+#endif // defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
+
 	/*add rules before this*/
 #if !defined(_BWG_PRODUCT_REQ_)
 	fprintf(raw_fp, "COMMIT\n");
@@ -17351,3 +17363,133 @@ static int do_wpad_isatap_blockv6 (FILE *filter_fp)
 
     return 0;
 }
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
+static int do_telcovoice_rules_v6(FILE *filter_fp, FILE *mangle_fp)
+{
+    char buf1[512] = {0};
+    char buf2[512] = {0};
+    char addr[64] = {0};
+    char port[16] = {0};
+    char markVal[16] = {0};
+    char *pAddr = NULL;
+    char *pToken = NULL;
+    fprintf(filter_fp, ":VOICE - [0:0]\n");
+    fprintf(filter_fp, "-I INPUT 1 -p udp -m udp -j VOICE\n");
+    fprintf(filter_fp, "-A VOICE -p udp -m udp --dport 5060 -j REJECT --reject-with icmp6-port-unreachable\n");
+    fprintf(mangle_fp, ":VOICE_MANGLE - [0:0]\n");
+    fprintf(mangle_fp, "-A POSTROUTING -p udp -m udp -j VOICE_MANGLE\n");
+#ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
+    char wanInterface[BUFLEN_64] = {'\0'};
+    wanmgr_get_wan_interface(wanInterface);
+#endif
+    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_PROXYLIST, buf1, sizeof(buf1)))
+    {
+        printf("ipv6 proxy list:%s \n", buf1);
+        pAddr = strtok(buf1, ",");
+        while( pAddr != NULL )
+        {
+            printf("ipv6 proxy Addr is :%s \n", pAddr);
+            //Add these rules for each of proxy addresses
+#ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
+            fprintf(filter_fp, "-I VOICE 1  -s %s -i %s -p udp -m udp --dport 5060 -j ACCEPT\n", pAddr, wanInterface);
+#else
+            fprintf(filter_fp, "-I VOICE 1  -s %s -i erouter0 -p udp -m udp --dport 5060 -j ACCEPT\n", pAddr);
+#endif
+            pAddr = strtok(NULL, ",");
+        }
+    }
+    else
+    {
+        FIREWALL_DEBUG("ERROR: Failed to get IPv6 Proxy list \n");
+    }
+    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_RTPLIST, buf2, sizeof(buf2)))
+    {
+        printf("rtp addr list:%s \n", buf2);
+        //get ip address & port pair
+        pToken = strtok(buf2, ",");
+        while( pToken != NULL )
+        {
+            //get ip address
+            memset(addr, 0, sizeof(addr));
+            strcpy(addr, pToken);
+            pToken = strtok(NULL, ";");
+            memset(port, 0, sizeof(port));
+            strcpy(port, pToken);
+            //Add these rules for each of RTP addresses
+#ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
+            fprintf(filter_fp, "-I VOICE 1 -s %s -i %s -p udp -m udp --dport %s -j ACCEPT\n", addr, wanInterface, port);
+#else
+            fprintf(filter_fp, "-I VOICE 1 -s %s -i erouter0 -p udp -m udp --dport %s -j ACCEPT\n", addr, port);
+#endif
+            pToken = strtok(NULL, ",");
+        }
+    }
+    else
+    {
+        FIREWALL_DEBUG("ERROR: Failed to get RTP addr list \n");
+    }
+    memset(buf2, 0 , sizeof(buf2));
+    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_ETHERNETPRIORITY, buf2, sizeof(buf2)))
+    {
+        //get ip address ,port and SKB mark.
+        pToken = strtok(buf2, ",");
+        while( pToken != NULL )
+        {
+            memset(addr, 0, sizeof(addr));
+            strncpy(addr, pToken, sizeof(addr) -1);
+            pToken = strtok(NULL, ",");
+            if(pToken != NULL)
+            {
+               memset(port, 0, sizeof(port) - 1);
+               strncpy(port, pToken, sizeof(port));
+               pToken = strtok(NULL, ";");
+               if(pToken != NULL)
+               {
+                  memset(markVal, 0, sizeof(markVal));
+                  strncpy(markVal, pToken, sizeof(markVal) - 1);
+                  fprintf(mangle_fp, "-A VOICE_MANGLE -d %s -p udp -m udp --sport %s -j MARK --set-xmark %s/%s\n", addr, port, markVal, markVal);
+                  pToken = strtok(NULL, ",");
+               }
+            }
+        }
+    }
+    else
+    {
+        FIREWALL_DEBUG("ERROR: Failed to get RTP SKB mark \n");
+    }
+    memset(buf2, 0 , sizeof(buf2));
+    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_DSCP, buf2, sizeof(buf2)))
+    {
+        //get ip address ,port and DSCP mark.
+        pToken = strtok(buf2, ",");
+        while( pToken != NULL )
+        {
+            memset(addr, 0, sizeof(addr));
+            strncpy(addr, pToken, sizeof(addr) -1);
+            pToken = strtok(NULL, ",");
+            if (pToken != NULL)
+            {
+               memset(port, 0, sizeof(port) - 1);
+               strncpy(port, pToken, sizeof(port));
+               pToken = strtok(NULL, ";");
+               if (pToken != NULL)
+               {
+                  memset(markVal, 0, sizeof(markVal));
+                  strncpy(markVal, pToken, sizeof(markVal) - 1);
+                  // DSCP range (0-63)
+                  if((atoi(markVal) >= 0) && (atoi(markVal) <= 63))
+                  {
+                      fprintf(mangle_fp, "-A VOICE_MANGLE -d %s -p udp -m udp --sport %s -j DSCP --set-dscp %s\n", addr, port, markVal);
+                  }
+                  pToken = strtok(NULL, ",");
+               }
+            }
+        }
+    }
+    else
+    {
+        FIREWALL_DEBUG("ERROR: Failed to get DSCP mark sys event.\n");
+    }
+    return 0;
+}
+#endif /*defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER) */
