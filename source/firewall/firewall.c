@@ -12407,6 +12407,12 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    {
        fprintf(filter_fp,"-A INPUT -p tcp --dport 8181 -j DROP\n");
    }
+
+#if defined(_CBR_PRODUCT_REQ_) || defined(SKY_RDKB)
+   /* RDKB-56214 Blocking CcspWifiSsp port 55010 for Outside access */
+   fprintf(filter_fp, "-A INPUT -p udp ! -i lo --dport 55010 -j DROP\n");
+#endif
+	
 #if !defined(_HUB4_PRODUCT_REQ_)
    fprintf(filter_fp, "-A INPUT -i %s -j wan2self_mgmt\n", ecm_wan_ifname);
 #endif /*_HUB4_PRODUCT_REQ_*/
