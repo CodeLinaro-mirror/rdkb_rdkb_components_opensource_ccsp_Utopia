@@ -14841,7 +14841,9 @@ int prepare_ipv6_firewall(const char *fw_file)
             fprintf(filter_fp, "-I OUTPUT -o %s -p tcp -m tcp --tcp-flags RST RST -m limit --limit 2/sec --limit-burst 2 -j ACCEPT\n",current_wan_ifname);
          }
          fprintf(filter_fp, "-I FORWARD -o %s -m state --state INVALID -j DROP\n",current_wan_ifname);
-
+#ifdef NAT46_KERNEL_SUPPORT
+         fprintf(filter_fp, "-I FORWARD -o %s -p gre -j ACCEPT\n",current_wan_ifname);
+#endif
    #endif
 
 	/*add rules before this*/
