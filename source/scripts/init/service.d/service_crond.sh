@@ -89,7 +89,9 @@ service_start ()
       echo "1 */1 * * *  /usr/bin/RxTx100" >> $CRONTAB_FILE
       echo "10 */6 * * *  /usr/ccsp/tad/getSsidNames.sh" >> $CRONTAB_FILE
 #rdkb-4297 Runs on the 1st minute of every 12th hour
-      echo "1 */12 * * *  /usr/ccsp/pam/moca_status.sh" >> $CRONTAB_FILE
+      if [ "$MOCA_SUPPORTED" != "false" ]; then
+          echo "1 */12 * * *  /usr/ccsp/pam/moca_status.sh" >> $CRONTAB_FILE
+      fi
 #RDKB-17984: Runs every 12 hours and prints mesh status
       if [ "$BOX_TYPE" != "XB3" ]; then
        echo "1 */12 * * *  /usr/ccsp/wifi/mesh_status.sh" >> $CRONTAB_FILE
