@@ -12313,7 +12313,10 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    //DROP incoming New NTP packets on erouter interface
    fprintf(filter_fp, "-A INPUT -i %s -m state --state ESTABLISHED,RELATED -p udp --dport 123 -j ACCEPT \n", get_current_wan_ifname());
    fprintf(filter_fp, "-A INPUT -i %s  -m state --state NEW -p udp --dport 123 -j DROP \n",get_current_wan_ifname());
-   
+
+   /* RDKB-57182 Blocking brlan0 ports 80,443 for interfaces other than lan */
+   fprintf(filter_fp, "-A INPUT -i brlan0 -p tcp -m multiport --dports 80,443 ! -d %s -j DROP\n", lan_ipaddr);
+
    // Video Analytics Firewall rule to allow port 58081 only from LAN interface
    do_OpenVideoAnalyticsPort (filter_fp);
    
