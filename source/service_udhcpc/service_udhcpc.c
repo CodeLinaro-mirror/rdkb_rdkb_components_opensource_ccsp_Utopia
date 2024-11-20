@@ -141,6 +141,7 @@ typedef struct udhcpc_script_t
 #define DHCP_RENEWL_TIME "renewaltime"
 #define DHCP_ACK_OPT58 "opt58"
 #define DHCP_ACK_OPT59 "opt59"
+#define DHCP_ACK_OPT100 "opt100"
 #define DHCP_REBINDING_TIME "rebindingtime"
 #define DHCP_SERVER_ID "serverid"
 
@@ -1411,26 +1412,28 @@ static int get_and_fill_env_data (ipc_dhcpv4_data_t *dhcpv4_data, udhcpc_script_
             OnboardLog("[%s-%d] Rebinding time is not available in dhcp ack \n",  __FUNCTION__,__LINE__);
         }
 
-        /** TimeZone. */
-        if ((env = getenv(DHCP_TIMEZONE)) != NULL)
-        {
-            safec_rc = strcpy_s(dhcpv4_data->timeZone, sizeof(dhcpv4_data->timeZone), env); // CID 187457: Buffer not null terminated (BUFFER_SIZE)
-            ERR_CHK(safec_rc);
-        }
-        else
-        {
-            OnboardLog("[%s-%d] Timezone is not available in dhcp ack \n",  __FUNCTION__,__LINE__);
-        }
-
         /** Timeoffset. */
-        if ((env = getenv(DHCP_TIMEOFFSET)) != NULL)
+        if ((env = getenv(DHCP_TIMEZONE)) != NULL)
         {
             dhcpv4_data->timeOffset = (int32_t) atoi(env);
             dhcpv4_data->isTimeOffsetAssigned = 1;
+            OnboardLog("[%s-%d] Timeoffset received from dhcp ack :  %d\n",  __FUNCTION__,__LINE__, dhcpv4_data->timeOffset);
         }
         else
         {
             OnboardLog("[%s-%d] Timeoffset is not available in dhcp ack \n",  __FUNCTION__,__LINE__);
+        }
+
+        /** TimeZone. */
+        if ((env = getenv(DHCP_ACK_OPT100)) != NULL)
+        {
+            safec_rc = strcpy_s(dhcpv4_data->timeZone, sizeof(dhcpv4_data->timeZone), env); // CID 187457: Buffer not null terminated (BUFFER_SIZE)
+            ERR_CHK(safec_rc);
+            OnboardLog("[%s-%d] TimeZone (opt100) received from dhcp ack :  %s\n",  __FUNCTION__,__LINE__, dhcpv4_data->timeZone);
+        }
+        else
+        {
+            OnboardLog("[%s-%d] TimeZone (opt100) is not available in dhcp ack \n",  __FUNCTION__,__LINE__);
         }
 
         /** UpstreamCurrRate. **/
