@@ -478,6 +478,10 @@ char cellular_ifname[32];
 #define SELFHEAL "SELFHEAL"
 #define HTTP_HIJACK_DIVERT "HTTP_HIJACK_DIVERT"
 #endif //HUB4_SELFHEAL_FEATURE_ENABLED
+#elif defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (IHC_FEATURE_ENABLED)
+#define IPOE_HEALTHCHECK "ipoe_healthcheck"
+#endif //IHC_FEATURE_ENABLED
 #endif //_HUB4_PRODUCT_REQ_
 
 #if defined (FEATURE_MAPT) || defined (FEATURE_SUPPORT_MAPT_NAT46)
@@ -11897,11 +11901,22 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    fprintf(mangle_fp, ":%s - [0:0]\n", "prerouting_qos");
    fprintf(mangle_fp, ":%s - [0:0]\n", "postrouting_qos");
    fprintf(mangle_fp, ":%s - [0:0]\n", "postrouting_lan2lan");
-#ifdef _HUB4_PRODUCT_REQ_
-#ifdef HUB4_BFD_FEATURE_ENABLED
-   fprintf(mangle_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
-   fprintf(mangle_fp, "-I PREROUTING -j %s\n", IPOE_HEALTHCHECK);
-#endif
+#if defined (_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+   char syscfg_value[64] = { 0 };
+   int get_ret = 0;
+   get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
+   if ((get_ret == 0) && atoi(syscfg_value) == 1)
+   {
+    fprintf(mangle_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
+    fprintf(mangle_fp, "-I PREROUTING -j %s\n", IPOE_HEALTHCHECK);
+   }
+#else //Hub4
+    fprintf(mangle_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
+    fprintf(mangle_fp, "-I PREROUTING -j %s\n", IPOE_HEALTHCHECK);
+#endif //_RDKB_GLOBAL_PRODUCT_REQ_
+#endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
 #ifdef HUB4_SELFHEAL_FEATURE_ENABLED
    fprintf(mangle_fp, ":%s - [0:0]\n", HTTP_HIJACK_DIVERT);
    fprintf(mangle_fp, ":%s - [0:0]\n", SELFHEAL);
@@ -12149,11 +12164,20 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    fprintf(nat_fp, "-A POSTROUTING -o %s -j postrouting_tolan\n", lan_ifname);
    prepare_multinet_postrouting_nat(nat_fp);
    fprintf(nat_fp, "-A POSTROUTING -j postrouting_plugins\n");
-#ifdef _HUB4_PRODUCT_REQ_
-#ifdef HUB4_BFD_FEATURE_ENABLED
+#if defined (_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_) 
+#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
+   if ((get_ret == 0) && atoi(syscfg_value) == 1)
+   {
+        fprintf(nat_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
+        fprintf(nat_fp, "-I PREROUTING -j %s\n", IPOE_HEALTHCHECK);
+   }
+#else
    fprintf(nat_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
    fprintf(nat_fp, "-I PREROUTING -j %s\n", IPOE_HEALTHCHECK);
-#endif //HUB4_BFD_FEATURE_ENABLED
+#endif //_RDKB_GLOBAL_PRODUCT_REQ_
+#endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
 #endif //_HUB4_PRODUCT_REQ_
 
    /*
@@ -12290,11 +12314,20 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    fprintf(filter_fp, ":%s - [0:0]\n", "xlogdrop");
    fprintf(filter_fp, ":%s - [0:0]\n", "xlogreject");
    fprintf(filter_fp, ":%s - [0:0]\n", "xlog_drop_lan2wan_misc");
-#ifdef _HUB4_PRODUCT_REQ_
-#ifdef HUB4_BFD_FEATURE_ENABLED
+#if defined (_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
+   if ((get_ret == 0) && atoi(syscfg_value) == 1)
+   {
+        fprintf(filter_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
+        fprintf(filter_fp, "-I INPUT -j %s\n", IPOE_HEALTHCHECK);
+   }
+#else
    fprintf(filter_fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
    fprintf(filter_fp, "-I INPUT -j %s\n", IPOE_HEALTHCHECK);
-#endif //HUB4_BFD_FEATURE_ENABLED
+#endif //_RDKB_GLOBAL_PRODUCT_REQ_
+#endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
 #endif //_HUB4_PRODUCT_REQ_
 
    if(isComcastImage) {
@@ -13641,6 +13674,16 @@ WAN_FAILOVER_SUPPORT_CHECk_END
 #ifdef HUB4_SELFHEAL_FEATURE_ENABLED
    do_self_heal_rules_v4(mangle_fp);
 #endif
+#elif defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+   char syscfg_value[64] = { 0 };
+   int get_ret = 0;
+   get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
+   if ((get_ret == 0) && atoi(syscfg_value) == 1)
+   {
+        do_hub4_bfd_rules_v4(nat_fp, filter_fp, mangle_fp);
+   }
+#endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
 #endif //_HUB4_PRODUCT_REQ_
 
 #ifdef LTE_USB_FEATURE_ENABLED
@@ -14881,6 +14924,16 @@ int prepare_ipv6_firewall(const char *fw_file)
    do_self_heal_rules_v6(mangle_fp);
 #endif
 
+#elif defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+   char syscfg_value[64] = { 0 };
+   int get_ret = 0;
+   get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
+   if ((get_ret == 0) && atoi(syscfg_value) == 1)
+   {
+        do_hub4_bfd_rules_v6(filter_fp, mangle_fp);
+   }
+#endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
       #endif //_HUB4_PRODUCT_REQ_
    #ifdef RDKB_EXTENDER_ENABLED  
    }
@@ -15000,11 +15053,22 @@ static void do_ipv6_filter_table(FILE *fp){
    fprintf(fp, ":lan2wan_pc_service - [0:0]\n");
    fprintf(fp, ":wan2lan - [0:0]\n");
 
-#ifdef _HUB4_PRODUCT_REQ_
-#ifdef HUB4_BFD_FEATURE_ENABLED
-   fprintf(fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
-   fprintf(fp, "-I INPUT -j %s\n", IPOE_HEALTHCHECK);
-#endif
+#if defined (_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+   char syscfg_value[64] = { 0 };
+   int get_ret = 0;
+   get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
+   if ((get_ret == 0) && atoi(syscfg_value) == 1)
+   {
+        fprintf(fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
+        fprintf(fp, "-I INPUT -j %s\n", IPOE_HEALTHCHECK);
+   }
+#else
+    fprintf(fp, ":%s - [0:0]\n", IPOE_HEALTHCHECK);
+    fprintf(fp, "-I INPUT -j %s\n", IPOE_HEALTHCHECK);
+#endif //_RDKB_GLOBAL_PRODUCT_REQ_
+#endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
 #endif //_HUB4_PRODUCT_REQ_
    //>>DOS
 #ifdef _COSA_INTEL_XB3_ARM_
