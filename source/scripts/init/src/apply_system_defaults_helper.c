@@ -1464,6 +1464,14 @@ static void addInSysCfgdDB (char *key, char *value)
            IsPSMMigrationNeeded = 1;
        }
    }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.LostandFound.Enable") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "lost_and_found_enable" ) )
+      {
+           set_syscfg_partner_values( value,"lost_and_found_enable" );
+      }
+   }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
 
    //Check whether migration needs to be handled or not
@@ -1639,6 +1647,11 @@ static void updateSysCfgdDB (char *key, char *value)
    {
       set_syscfg_partner_values( value,"InterfaceVLANMarkingSupport" );
       IsPSMMigrationNeeded = 1;
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.LostandFound.Enable") )
+   {
+         set_syscfg_partner_values( value,"lost_and_found_enable" );
    }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
 
@@ -2611,6 +2624,23 @@ int apply_partnerId_default_values (char *data, char *PartnerID)
                                                 else
                                                 {
                                                         APPLY_PRINT("%s - InterfaceVLANMarkingSupport Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+	
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.LostandFound.Enable"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *lnf = NULL;
+                                                lnf = paramObjVal->valuestring;
+
+                                                if (lnf != NULL)
+                                                {
+                                                         set_syscfg_partner_values(lnf,"lost_and_found_enable");
+                                                         lnf = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - lnf Value is NULL\n", __FUNCTION__ );
                                                 }
                                         }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   

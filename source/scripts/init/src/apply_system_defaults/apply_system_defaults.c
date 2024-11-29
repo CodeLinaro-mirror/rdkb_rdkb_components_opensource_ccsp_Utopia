@@ -1397,6 +1397,14 @@ static void addInSysCfgdDB (char *key, char *value)
        }
    }
 
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.LostandFound.Enable") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "lost_and_found_enable" ) )
+      {
+         set_syscfg_partner_values( value,"lost_and_found_enable" );
+      }
+   }  
+
    if ( 0 == strcmp ( key, "Device.X_RDK_Features.BackupWanDns") )
    {
       if ( 0 == IsValuePresentinSyscfgDB( "BackupWanDnsSupport" ) )
@@ -1631,7 +1639,13 @@ static void updateSysCfgdDB (char *key, char *value)
       set_syscfg_partner_values( value,"InterfaceVLANMarkingSupport" );
       IsPSMMigrationNeeded = 1;
    }
-#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.LostandFound.Enable") )
+   {
+         set_syscfg_partner_values( value,"lost_and_found_enable" );
+   }
+
+#endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
 
    //Check whether migration needs to be handled or not
    if( 1 == IsPSMMigrationNeeded )
@@ -2602,6 +2616,23 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
                                                 else
                                                 {
                                                         APPLY_PRINT("%s - InterfaceVLANMarkingSupport Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.LostandFound.Enable"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *lnf = NULL;
+                                                lnf = paramObjVal->valuestring;
+
+                                                if (lnf != NULL)
+                                                {
+                                                        set_syscfg_partner_values(lnf,"lost_and_found_enable");
+                                                        lnf = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - lnf Value is NULL\n", __FUNCTION__ );
                                                 }
                                         }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */

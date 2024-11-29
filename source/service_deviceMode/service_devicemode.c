@@ -405,8 +405,16 @@ int service_start(int mode)
             sysevent_set(sysevent_fd, sysevent_token, "ipv4-up", buf, 0);
 
             snprintf(buf,sizeof(buf),"%d", LNF_MULTINET_INSTANCE);
-            sysevent_set(sysevent_fd, sysevent_token, "lnf-setup", buf, 0);
-
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+            char lnfEnabled[8] = {0};
+            syscfg_get(NULL, "lost_and_found_enable", lnfEnabled, sizeof(lnfEnabled));
+            if(strncmp(lnfEnabled, "false", 5) != 0)
+            {
+                 sysevent_set(sysevent_fd, sysevent_token, "lnf-setup", buf, 0);
+	    } 
+#else
+             sysevent_set(sysevent_fd, sysevent_token, "lnf-setup", buf, 0);
+#endif
             runCommandInShellBlocking("systemctl restart CcspLMLite.service");
             sysevent_set(sysevent_fd, sysevent_token, "zebra-restart", "", 0);
         }

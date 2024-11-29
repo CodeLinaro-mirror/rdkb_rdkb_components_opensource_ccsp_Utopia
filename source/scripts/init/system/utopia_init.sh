@@ -469,6 +469,8 @@ then
     iot_netmask=`syscfg get iot_netmask`
     echo_t "[utopia][init] [DHCPCORRUPT_TRACE] configuring for IOT iot_ifname = $iot_ifname "
     echo_t "[utopia][init] [DHCPCORRUPT_TRACE] iot_dhcp_start = $iot_dhcp_start iot_dhcp_end=$iot_dhcp_end iot_netmask=$iot_netmask"
+else
+    touch /tmp/lnf_disable
 fi
 
 ForwardSSH=`syscfg get ForwardSSH`
