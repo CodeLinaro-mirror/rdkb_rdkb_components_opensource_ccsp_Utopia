@@ -1675,6 +1675,10 @@ static inline BOOL isMultiLANL3Instance(int instance){
   if(rc != CCSP_SUCCESS || pStr == NULL)
     return FALSE;
   pVal = atoi(pStr);
+  if(pStr){
+    AnscFreeMemory(pStr);
+    pStr = NULL;
+  }
 
    FIREWALL_DEBUG("value is %d\n" COMMA pVal);         
   if(pVal <= 0)
@@ -1688,6 +1692,10 @@ static inline BOOL isMultiLANL3Instance(int instance){
   if(rc != CCSP_SUCCESS || pStr == NULL)
     return FALSE;
   pVal = atoi(pStr);
+  if(pStr){
+    AnscFreeMemory(pStr);
+    pStr = NULL;
+  }
 
    FIREWALL_DEBUG("value is %d\n" COMMA pVal);         
   if(pVal <= 0)
