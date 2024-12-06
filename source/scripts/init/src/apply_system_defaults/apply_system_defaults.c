@@ -1175,6 +1175,10 @@ static int ApplyPartnersObjectItemsIntoSysevents( char *pcPartnerID )
                {
                   sysevent_set (global_fd, global_id, "GatewayFailoverSupport", value, 0);
                }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.UseCEDMPasswordForGUI") )
+               {
+                  sysevent_set (global_fd, global_id, "UseCEDMPasswordForGUI", value, 0);
+               }
 
                pCJsonChildParam = pCJsonChildParam->next;
             }
@@ -2027,8 +2031,11 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
                                                     // For Sky, we need to pull the default login from the /tmp/serial.txt file.
                                                     FILE *fp = NULL;
                                                     char DefaultPassword[25] = {0};
-
+                                                    #if defined (_SCER11BEL_PRODUCT_REQ_)
+                                                    fp = popen("grep 'WIFI_PASSWORD' /tmp/serial.txt | cut -d '=' -f 2 | tr -d [:space:]", "r");
+                                                    #else
                                                     fp = popen("grep 'WIFIPASSWORD' /tmp/serial.txt | cut -d '=' -f 2 | tr -d [:space:]", "r");
+                                                    #endif /** _SCER11BEL_PRODUCT_REQ_ */
                                                     if (fp == NULL)
                                                     {
                                                         APPLY_PRINT("%s - ERROR Grabbing the default password\n",__FUNCTION__);
