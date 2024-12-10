@@ -46,6 +46,12 @@ SELF_NAME="`basename "$0"`"
 
 service_start() {
 
+    CcspHome_Security=`sysevent get HomeSecuritySupport`
+    if [ "$CcspHome_Security" = "false" ]; then
+        echo "CcspHome_Security is disabled "
+        exit;
+    fi
+
 	INST=`sysevent get homesecurity_lan_l3net`	
     if [ x"`sysevent get ipv4_"${INST}"-status`" = x"$L3_UP_STATUS"  -a x"`sysevent get ${SERVICE_NAME}-status`" != x"started" ] ; then
         ulog ${SERVICE_NAME} status "starting ${SERVICE_NAME} service" 

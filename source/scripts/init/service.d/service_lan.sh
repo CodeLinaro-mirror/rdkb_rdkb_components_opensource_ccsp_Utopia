@@ -666,6 +666,7 @@ service_start ()
 #song:   register_docsis_handler
    wait_till_end_state ${SERVICE_NAME}
 
+   CcspHome_Security=`sysevent get HomeSecuritySupport`
    STATUS=`sysevent get ${SERVICE_NAME}-status`
    if [ "started" != "$STATUS" ] ; then
       sysevent set ${SERVICE_NAME}-errinfo
@@ -688,7 +689,11 @@ service_start ()
       fi
 	  #rongwei added
 #	  killall wecb_master 2>/dev/null
-	  killall CcspHomeSecurity 2>/dev/null
+          if [ "$CcspHome_Security" = "false" ]; then
+              echo_t "CcspHomeSecurity is disabled"
+          else
+	      killall CcspHomeSecurity 2>/dev/null
+          fi
 #	  ulimit -s 200 && wecb_master& 
 	  sleep 1
 	  ###echo `ps | grep wecb_master | grep -v grep | awk '{print $1}'` > /var/run/wecb_master.pid
@@ -697,7 +702,11 @@ service_start ()
 #	  chmod +x /var/wecb_master.sh
 #	  /etc/utopia/service.d/pmon.sh register wecb_master
 #	  /etc/utopia/service.d/pmon.sh setproc wecb_master wecb_master /var/run/wecb_master.pid "/var/wecb_master.sh" 
-	  CcspHomeSecurity 8081&
+          if [ "$CcspHome_Security" = "false" ]; then
+              echo_t "CcspHomeSecurity is disabled"
+          else
+              CcspHomeSecurity 8081&
+          fi
    fi
 }
 
