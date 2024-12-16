@@ -1662,6 +1662,24 @@ static int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
               }
            }
          }
+         #if defined (SPEED_BOOST_SUPPORTED)
+
+         if ( 0 == strcmp ( key, "Device.RouterAdvertisement.X_RDK_PvD.FQDN") )
+         {
+            if ( 0 == IsValuePresentinSyscfgDB( "Advertisement_pvd_fqdn" ) )
+            {
+               set_syscfg_partner_values( value,"Advertisement_pvd_fqdn" );
+            }
+         }
+         if ( 0 == strcmp ( key, "Device.RouterAdvertisement.X_RDK_PvD.Enable") )
+         {
+            if ( 0 == IsValuePresentinSyscfgDB( "Advertisement_pvd_enable" ) )
+            {
+               set_syscfg_partner_values( value,"Advertisement_pvd_enable" );
+            }
+         }
+         #endif
+         
          if (bs_obj == NULL)
          {
             APPLY_PRINT("param %s does not exist in nvram bootstrap json. Adding it...\n", key);
