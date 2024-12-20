@@ -83,7 +83,9 @@ int get_ip6address (char * ifname, char ipArry[][40], int * p_num, unsigned int 
 
 #ifdef WAN_FAILOVER_SUPPORTED
 
+#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_BANANAPI_R4_)
 void  redirect_dns_to_extender(FILE *nat_fp,int family);
+#endif //_PLATFORM_RASPBERRYPI_ && _PLATFORM_BANANAPI_R4_
 
 typedef enum {
     ROUTER =0,

@@ -11974,7 +11974,9 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
 #endif
 
 #if WAN_FAILOVER_SUPPORTED
+#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_BANANAPI_R4_)
    redirect_dns_to_extender(nat_fp,AF_INET);
+#endif //_PLATFORM_RASPBERRYPI_ && _PLATFORM_BANANAPI_R4_
 #endif 
 
 #if defined(_WNXL11BWL_PRODUCT_REQ_) 
@@ -13371,6 +13373,7 @@ void  proxy_dns(FILE *nat_fp,int family)
 #endif
 
 #ifdef WAN_FAILOVER_SUPPORTED
+#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_BANANAPI_R4_)
 void  redirect_dns_to_extender(FILE *nat_fp,int family)
 {
    FIREWALL_DEBUG("Entering redirect_dns_to_extender,current_wan_ifname is %s , default wan is %s\n" COMMA current_wan_ifname COMMA default_wan_ifname);
@@ -13469,6 +13472,7 @@ void  redirect_dns_to_extender(FILE *nat_fp,int family)
    FIREWALL_DEBUG("Exiting redirect_dns_to_extender\n");
    return ;
 }
+#endif //_PLATFORM_RASPBERRYPI_ && _PLATFORM_BANANAPI_R4_
 #endif
 
 #ifdef LTE_USB_FEATURE_ENABLED
@@ -14502,7 +14506,9 @@ static void do_ipv6_nat_table(FILE* fp)
 	fprintf(fp, ":%s - [0:0]\n", "prerouting_redirect");
 
 #ifdef WAN_FAILOVER_SUPPORTED
+#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_BANANAPI_R4_)
       redirect_dns_to_extender(fp,AF_INET6);
+#endif //_PLATFORM_RASPBERRYPI_ && _PLATFORM_BANANAPI_R4_
 #endif 
 
 #if defined(_WNXL11BWL_PRODUCT_REQ_) 
