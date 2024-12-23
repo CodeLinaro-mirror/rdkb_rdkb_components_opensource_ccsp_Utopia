@@ -485,16 +485,6 @@ fi
       rm -f /nvram/dnsmasq.vendorclass
    fi
 
-   # Remove lxy L2 dir
-   LOG_FILE=/rdklogs/logs/lxy.log
-   echo_t "[FR] Removing lxy L2 Dir" >> $LOG_FILE
-   if [ -f /etc/lxy.conf ];then
-       L2="$(grep '^L2=' /etc/lxy.conf | sed -e 's/L2=//')"
-   fi
-   if [ -d "$L2" ]; then
-       rm -rf "$L2"
-   fi
-
    #Remove hwselftest.results file if present
    rm -f /nvram/hwselftest.results
 
