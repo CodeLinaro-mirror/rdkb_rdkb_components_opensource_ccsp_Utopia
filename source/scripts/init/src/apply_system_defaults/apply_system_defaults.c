@@ -1428,6 +1428,15 @@ static void addInSysCfgdDB (char *key, char *value)
            IsPSMMigrationNeeded = 1;
        }
    }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.InterfaceVLANMarkingSupport") )
+   {
+       if ( 0 == IsValuePresentinSyscfgDB( "InterfaceVLANMarkingSupport" ) )
+       {
+           set_syscfg_partner_values( value,"InterfaceVLANMarkingSupport" );
+           IsPSMMigrationNeeded = 1;
+       }
+   }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */   
 
    //Check whether migration needs to be handled or not
@@ -1610,6 +1619,12 @@ static void updateSysCfgdDB (char *key, char *value)
    if ( 0 == strcmp ( key, "Device.X_RDK_Features.UseWANMACForManagementServices") )
    {
       set_syscfg_partner_values( value,"UseWANMACForManagementServices" );
+      IsPSMMigrationNeeded = 1;
+   }
+
+   if ( 0 == strcmp ( key, "Device.X_RDK_Features.InterfaceVLANMarkingSupport") )
+   {
+      set_syscfg_partner_values( value,"InterfaceVLANMarkingSupport" );
       IsPSMMigrationNeeded = 1;
    }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
@@ -2566,6 +2581,23 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
                                                 else
                                                 {
                                                         APPLY_PRINT("%s - UseWANMACForManagementServices Value is NULL\n", __FUNCTION__ );
+                                                }
+                                        }
+
+                                        paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDK_Features.InterfaceVLANMarkingSupport"), "ActiveValue");
+                                        if ( paramObjVal != NULL )
+                                        {
+                                                char *tmpValue = NULL;
+                                                tmpValue = paramObjVal->valuestring;
+
+                                                if (tmpValue != NULL)
+                                                {
+                                                         set_syscfg_partner_values(tmpValue,"InterfaceVLANMarkingSupport");
+                                                         tmpValue = NULL;
+                                                }
+                                                else
+                                                {
+                                                        APPLY_PRINT("%s - InterfaceVLANMarkingSupport Value is NULL\n", __FUNCTION__ );
                                                 }
                                         }
 #endif /* _RDKB_GLOBAL_PRODUCT_REQ_ */
