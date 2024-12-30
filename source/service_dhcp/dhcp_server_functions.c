@@ -1570,6 +1570,15 @@ int prepare_dhcp_conf (char *input)
 
 #endif
 #endif 
+
+#if defined (_XB6_PRODUCT_REQ_) || defined (RDKB_EXTENDER_ENABLED) 
+        /* The following rule is added to ignore selfWAN DHCP request if the packet is looped to LAN */
+        /* This rule will block DHCP packets with Vendor Class Identifier "eRouter1.0" */
+        fprintf(l_fLocal_Dhcp_ConfFile, "#Ignore self WAN DHCP request\n"
+                "dhcp-ignore=tag:block_selfWAN\n"
+                "dhcp-vendorclass=set:block_selfWAN,eRouter1.0\n\n" );
+#endif
+
 	if ((NULL == input) || 
 		((NULL != input) && (strncmp(input, "dns_only", 8)))) //not dns_only case
 	{
