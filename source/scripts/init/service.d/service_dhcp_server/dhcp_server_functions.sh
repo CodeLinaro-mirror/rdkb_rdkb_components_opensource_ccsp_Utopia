@@ -986,6 +986,10 @@ fi
        echo "domain-needed" >> $LOCAL_DHCP_CONF
        echo "bogus-priv" >> $LOCAL_DHCP_CONF
 
+       if [ "$BOX_TYPE" = "SR213" ] ; then
+           echo "strict-order" >> $LOCAL_DHCP_CONF
+       fi
+
        if [ "$CAPTIVE_PORTAL_MODE" = "true" ]
        then
         # Create a temporary resolv configuration file
