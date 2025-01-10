@@ -14978,6 +14978,19 @@ int prepare_ipv6_firewall(const char *fw_file)
 #ifdef NAT46_KERNEL_SUPPORT
          fprintf(filter_fp, "-I FORWARD -o %s -p gre -j ACCEPT\n",current_wan_ifname);
 #endif
+
+         int retval = 0;
+         char tmpsysQuery[MAX_QUERY];
+         memset(tmpsysQuery, 0, sizeof(tmpsysQuery));
+         retval = syscfg_get(NULL, "ipv6_hopbyhop_hdr_accept", tmpsysQuery, sizeof(tmpsysQuery));
+         if ((retval == 0) && (!strcmp(tmpsysQuery,"true")))
+         {
+            /* These rules are needed to accept IPv6 traffic with HBH extension header and No-Next-Header option */
+            /* To enable ipv6header module support need to set CONFIG_IP6_NF_MATCH_IPV6HEADER=m kernel config */
+             fprintf(filter_fp,"-I FORWARD 1 -o erouter0 -m ipv6header --soft --header hop-by-hop -j ACCEPT\n");
+             fprintf(filter_fp,"-I FORWARD 1 -o erouter0 -m ipv6header --soft --header hop-by-hop -j LOG --log-prefix \"UTOPIA: FW.IPv6 FORWARD Hop-by-Hop\" --log-level 6\n");
+         }
+
    #endif
 
 #if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
