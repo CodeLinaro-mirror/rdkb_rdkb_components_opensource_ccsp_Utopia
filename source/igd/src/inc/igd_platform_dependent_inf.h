@@ -65,7 +65,20 @@
 #define UPC                         "RDKB_ARM"
 #endif
 
-#if defined(_COSA_BCM_ARM_) && (defined(_CBR_PRODUCT_REQ_) || defined(_XB6_PRODUCT_REQ_))
+#if defined(_SCER11BEL_PRODUCT_REQ_)
+    #undef CONFIG_VENDOR_MODEL
+    #define CONFIG_VENDOR_MODEL "SCER11BEL"
+#elif defined(_XER5_PRODUCT_REQ_)
+    #undef CONFIG_VENDOR_MODEL
+    #define CONFIG_VENDOR_MODEL "VTER11QEL"
+#elif defined(_XB10_PRODUCT_REQ_)
+    #undef CONFIG_VENDOR_MODEL
+ #if defined (IGD_SERCOMMXB10_INFO)
+    #define CONFIG_VENDOR_MODEL "SG417DBCT"
+ #else    //IGD_VBVXB10_INFO
+    #define CONFIG_VENDOR_MODEL "CGM601TCOM"
+ #endif
+#elif defined(_COSA_BCM_ARM_) && (defined(_CBR_PRODUCT_REQ_) || defined(_XB6_PRODUCT_REQ_))
 #undef CONFIG_VENDOR_MODEL
     #if defined (_XB8_PRODUCT_REQ_)
       #define CONFIG_VENDOR_MODEL  "CGM4981COM"
