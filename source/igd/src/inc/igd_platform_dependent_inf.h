@@ -55,6 +55,22 @@
 #define MODULE_NUMBER               "TG3482G"
 #define MODULE_URL                  "http://www.comcast.com"
 #define UPC                         "TG3482G"
+#elif defined(_SR213_PRODUCT_REQ_)
+#define MANUFACTURER                "Sky"
+#define MANUFACTURER_URL            "http://www.sky.com/"
+#define MODULE_DESCRIPTION          "Sky xDSL Gateway Device"
+#define MODULE_NAME                 "SR213"
+#define MODULE_NUMBER               "SR213"
+#define MODULE_URL                  "http://www.sky.com/"
+#define UPC                         "SR213"
+#elif defined(_HUB4_PRODUCT_REQ_)
+#define MANUFACTURER                "Sky"
+#define MANUFACTURER_URL            "http://www.sky.com/"
+#define MODULE_DESCRIPTION          "Sky xDSL Gateway Device"
+#define MODULE_NAME                 "SR203"
+#define MODULE_NUMBER               "SR203"
+#define MODULE_URL                  "http://www.sky.com/"
+#define UPC                         "SR203"
 #else
 #define MANUFACTURER                "Cisco"
 #define MANUFACTURER_URL            "http://www.cisco.com/"
@@ -91,7 +107,11 @@
     #elif defined (_CBR_PRODUCT_REQ_)
       #define CONFIG_VENDOR_MODEL  "CGA4131COM"
     #endif
+#elif defined(_SR213_PRODUCT_REQ_)
+#undef CONFIG_VENDOR_MODEL
+#define CONFIG_VENDOR_MODEL "SR213"
+#elif defined(_HUB4_PRODUCT_REQ_)
+#undef CONFIG_VENDOR_MODEL
+#define CONFIG_VENDOR_MODEL "SR203"
 #endif
-
 #endif
-
