@@ -50,10 +50,8 @@
 #include <net/route.h>
 #include "util.h"
 #include "errno.h"
-#if defined (WIFI_MANAGE_SUPPORTED)
 #include "ccsp_psm_helper.h"
 #define CCSP_SUBSYS "eRT."
-#endif /*WIFI_MANAGE_SUPPORTED*/
 
 int vsystem(const char *fmt, ...)
 {
@@ -319,7 +317,6 @@ int serv_can_stop(int sefd, token_t setok, const char *servname)
     return 1;
 }
 
-#if defined (WIFI_MANAGE_SUPPORTED)
 void psmGet(void *bus_handle, char *pParamName, char *pParamValue, size_t len)
 {
     char *pVal = NULL;
@@ -339,6 +336,8 @@ void psmGet(void *bus_handle, char *pParamName, char *pParamValue, size_t len)
         ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(pVal);
     }
 }
+
+#if defined (WIFI_MANAGE_SUPPORTED)
 
 void updateDhcpPoolData(void * bus_handle, char * pIndex, FILE * pFile)
 {

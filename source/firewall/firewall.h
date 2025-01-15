@@ -65,7 +65,6 @@ int do_logs(FILE *fp);
 int do_wan2self_attack(FILE *fp,char* wan_ip);
 int prepare_ipv4_firewall(const char *fw_file);
 int prepare_ipv6_firewall(const char *fw_file);
-
 #define CCSP_SUBSYS "eRT."
 
 #define IF_IPV6ADDR_MAX 16
@@ -95,6 +94,7 @@ typedef enum {
 unsigned int Get_Device_Mode() ;
 
 char* get_iface_ipaddr(const char* iface_name);
+
 
 #endif
 
