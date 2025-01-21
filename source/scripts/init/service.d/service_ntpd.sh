@@ -302,27 +302,31 @@ set_ntp_driftsync_status ()
       retry=1
       while true
       do
-        sync_status=`ntpq -c rv | grep "stratum=16"`
-        if [ -z "$sync_status" ]; then
-           echo_t "SERVICE_NTPD : ntpd time synced , setting the status" >> $NTPD_LOG_NAME
-           syscfg set ntp_status 3
-           sysevent set ntp_time_sync 1
-	   touch /tmp/clock-event
-           echo_t "DEBUG : clock-event file created in /tmp. Time Sync is successful. Xconf is good to start" >> $NTPD_LOG_NAME
-           #Set FirstUseDate in Syscfg if this is the first time we are doing a successful NTP Sych
-           DEVICEFIRSTUSEDATE=`syscfg get device_first_use_date`
-           if [ -z "$DEVICEFIRSTUSEDATE" ] || [ "0" = "$DEVICEFIRSTUSEDATE" ]; then
-              FIRSTUSEDATE=`date +%Y-%m-%dT%H:%M:%S`
-              syscfg set device_first_use_date "$FIRSTUSEDATE"
-           fi
-           break
-        elif [ "$retry" -gt "20" ]; then
-             echo_t "Time is not synced after 20 min retry. Breaking loop" >> $NTPD_LOG_NAME
-             break
-        else
-             echo_t "SERVICE_NTPD : Time not yet synced, Sleeping. Retry:$retry" >> $NTPD_LOG_NAME
-             retry=`expr $retry + 1`
-             sleep 60
+      #Check if ntpq -c rv returns any value
+        ntpq_value=`ntpq -c rv`
+        if [ -n "$ntpq_value" ]; then
+            sync_status=`ntpq -c rv | grep "stratum=16"`
+            if [ -z "$sync_status" ]; then
+            echo_t "SERVICE_NTPD : ntpd time synced , setting the status" >> $NTPD_LOG_NAME
+            syscfg set ntp_status 3
+            sysevent set ntp_time_sync 1
+            touch /tmp/clock-event
+            echo_t "DEBUG : clock-event file created in /tmp. Time Sync is successful. Xconf is good to start" >> $NTPD_LOG_NAME
+            #Set FirstUseDate in Syscfg if this is the first time we are doing a successful NTP Sych
+            DEVICEFIRSTUSEDATE=`syscfg get device_first_use_date`
+            if [ -z "$DEVICEFIRSTUSEDATE" ] || [ "0" = "$DEVICEFIRSTUSEDATE" ]; then
+                FIRSTUSEDATE=`date +%Y-%m-%dT%H:%M:%S`
+                syscfg set device_first_use_date "$FIRSTUSEDATE"
+            fi
+            break
+            elif [ "$retry" -gt "20" ]; then
+                echo_t "Time is not synced after 20 min retry. Breaking loop" >> $NTPD_LOG_NAME
+                break
+            else
+                echo_t "SERVICE_NTPD : Time not yet synced, Sleeping. Retry:$retry" >> $NTPD_LOG_NAME
+                retry=`expr $retry + 1`
+                sleep 60
+            fi
         fi
       done
    else

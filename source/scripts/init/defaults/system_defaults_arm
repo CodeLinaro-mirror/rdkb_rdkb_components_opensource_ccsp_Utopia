@@ -1229,7 +1229,7 @@ $ra_interval=3
 $CpuMemFrag_Interval=4
 
 #Partner support for NTP FQDN
-$new_ntp_enabled=false
+$new_ntp_enabled=true
 
 #Enable PresenceDetect
 $PresenceDetectEnabled=false
