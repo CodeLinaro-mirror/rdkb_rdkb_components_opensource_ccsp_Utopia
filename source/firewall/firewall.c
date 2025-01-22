@@ -14885,7 +14885,7 @@ int prepare_ipv6_firewall(const char *fw_file)
 	do_parental_control(filter_fp,nat_fp, 6);
 #if defined(SPEED_BOOST_SUPPORTED) && defined(SPEED_BOOST_SUPPORTED_V6)
 	WAN_FAILOVER_SUPPORT_CHECK
-	if(isWanServiceReady)
+	if(isWanServiceReady && !isBridgeMode)
 		do_speedboost_port_rules(mangle_fp,nat_fp , 6);
 	WAN_FAILOVER_SUPPORT_CHECk_END
 #endif
