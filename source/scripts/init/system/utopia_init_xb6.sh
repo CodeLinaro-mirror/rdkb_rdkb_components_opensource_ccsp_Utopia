@@ -913,3 +913,23 @@ if [ "$MODEL_NUM" = "TG3482G" ]; then
        echo "" > "$REBOOT_LOG"
     fi
 fi
+
+IsFirmwareUpgrade()
+{
+    rebootReason=`syscfg get X_RDKCENTRAL-COM_LastRebootReason`
+    if [ "$rebootReason" = "Software_upgrade" ] || [ "$rebootReason" = "Forced_Software_upgrade" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+if [ "$(syscfg get MAPT_Enable)" != "true" ] && [ ! -f "/nvram/.mapt_enabled" ]; then
+    partnerID=`syscfg get PartnerID`
+    if [ "$MAPT_SUPPORT" == "true" ] && [ "$partnerID" = "cox" ] && IsFirmwareUpgrade; then
+        syscfg set MAPT_Enable true
+        syscfg commit
+        touch /nvram/.mapt_enabled
+        echo_t "MAPT_Enable is $(syscfg get MAPT_Enable) for $partnerID"
+    fi
+fi
