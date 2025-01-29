@@ -411,6 +411,27 @@ resync_to_nonvol ()
 }
 
 #-----------------------------------------------------------------
+reset_usb_ports ()
+{
+    usb_devices=$(ls /sys/bus/usb/devices/)
+
+    for device in $usb_devices; do
+        # Skip if it's not a valid USB device (like 'usb1' or 'usb2' directories)
+        if [[ "$device" =~ ^usb[0-9]+$ ]]; then
+            # Check if the device has a driver bound to it
+            if [ -e "/sys/bus/usb/devices/$device/driver" ]; then
+                # Unbind the USB device
+                echo -n "$device" > /sys/bus/usb/drivers/usb/unbind
+                # Wait for 2 seconds to ensure the device is unbound
+                sleep 2
+                # Re-bind the USB device
+                echo -n "$device" > /sys/bus/usb/drivers/usb/bind
+            fi
+        fi
+    done
+}
+
+#-----------------------------------------------------------------
 dhcp_server_start ()
 {
    if [ "0" = "$SYSCFG_dhcp_server_enabled" ] ; then
@@ -603,12 +624,20 @@ dhcp_server_start ()
    if [ "$PSM_MODE" != "1" ]; then
        if [ -f "/var/tmp/.refreshlan" ];then
             echo_t "RDKB_SYSTEM_BOOT_UP_LOG : Call gw_lan_refresh_from_dhcpscript:`uptime | cut -d "," -f1 | tr -d " \t\n\r"`"
-            gw_lan_refresh &
+            if [ "$BOX_TYPE" = "rpi" ]; then
+                reset_usb_ports
+            else
+                gw_lan_refresh &
+	    fi
             rm -f /var/tmp/.refreshlan
        elif [ ! -f "/var/tmp/lan_not_restart" ] && [ "$1" != "lan_not_restart" ]; then
            if [ x"ready" = x`sysevent get start-misc` ]; then
                echo_t "RDKB_SYSTEM_BOOT_UP_LOG : Call gw_lan_refresh_from_dhcpscript:`uptime | cut -d "," -f1 | tr -d " \t\n\r"`"
-               gw_lan_refresh &
+               if [ "$BOX_TYPE" = "rpi" ]; then
+                   reset_usb_ports
+               else
+                   gw_lan_refresh &
+	       fi
 	       fi
        else
            rm -f /var/tmp/lan_not_restart
