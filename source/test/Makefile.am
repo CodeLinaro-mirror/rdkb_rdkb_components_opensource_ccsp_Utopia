@@ -17,4 +17,5 @@
 # limitations under the License.
 ##########################################################################
 
-SUBDIRS = service_routed service_ipv6 service_udhcpc service_dhcp service_wan
+SUBDIRS = service_routed service_ipv6 service_udhcpc service_dhcp service_wan \
+          apply_system_defaults

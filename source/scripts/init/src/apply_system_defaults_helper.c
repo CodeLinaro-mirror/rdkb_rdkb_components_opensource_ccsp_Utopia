@@ -1254,6 +1254,16 @@ static void addInSysCfgdDB (char *key, char *value)
       Check if all of these parameters are SET into DBs
    */
    int IsPSMMigrationNeeded = 0;
+   //If WiFiPersonalization.Support is false, set redirection_flag to false to disable Captive Portal
+   if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.RDKB_UIBranding.WiFiPersonalization.Support") )
+   {
+      if ( 0 == strcmp(value, "false") )
+      {
+         APPLY_PRINT("%s: Setting redirection_flag and WiFiPersonalizationSupport to FALSE\n", __FUNCTION__);
+         set_syscfg_partner_values( value, "redirection_flag" );
+         set_syscfg_partner_values( value, "WiFiPersonalizationSupport" );
+      }
+   }
    if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.SyndicationFlowControl.InitialForwardedMark") )
    {
       if ( 0 == IsValuePresentinSyscfgDB( "DSCP_InitialForwardedMark" ) )
@@ -1915,6 +1925,16 @@ int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_ob
                  APPLY_PRINT("syscfg_unset failed\n");
               }
            }
+         }
+         //If WiFiPersonalization.Support is false, set redirection_flag to false to disable Captive Portal
+         if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.RDKB_UIBranding.WiFiPersonalization.Support") )
+         {
+            if ( 0 == strcmp(value, "false") )
+            {
+               APPLY_PRINT("%s: Setting redirection_flag and WiFiPersonalizationSupport to FALSE\n", __FUNCTION__);
+               set_syscfg_partner_values( value, "redirection_flag" );
+               set_syscfg_partner_values( value, "WiFiPersonalizationSupport" );
+            }
          }
          if (bs_obj == NULL)
          {

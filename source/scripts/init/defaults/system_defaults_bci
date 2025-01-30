@@ -1325,3 +1325,5 @@ $DeviceType=TEST
 #TrackRemotePortUsage default value
 $TrackRemotePortUsage=NULL
 
+#Wifi Personalization Support Default value
+$WiFiPersonalizationSupport=true

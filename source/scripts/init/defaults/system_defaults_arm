@@ -1489,3 +1489,6 @@ $TrackRemotePortUsage=NULL
 #Remote Debugger default Value
 $RemoteDebuggerEnabled=false
 $RemoteDebuggerIssueType=NULL
+
+#Wifi Personalization Support Default value
+$WiFiPersonalizationSupport=true

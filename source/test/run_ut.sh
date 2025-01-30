@@ -170,6 +170,16 @@ else
     exit 1
 fi
 
+log "INFO" "Running Binary of apply_system_defaults_gtest.bin .. "
+if [ -f "./source/test/apply_system_defaults/apply_system_defaults_gtest.bin" ]; then
+    log "INFO" "Running apply_system_defaults_gtest.bin"
+    ./source/test/apply_system_defaults/apply_system_defaults_gtest.bin
+    log "INFO" "Completed Test Execution"
+else
+    log "ERROR" "apply_system_defaults_gtest.bin does not exist, cannot run tests"
+    exit 1
+fi
+
 log "INFO" "Starting Gcov for code coverage analysis"
 # Capture initial coverage data
 if lcov --directory . --capture --output-file coverage.info; then

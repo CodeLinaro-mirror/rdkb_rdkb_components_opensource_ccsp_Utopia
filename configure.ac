@@ -31,7 +31,7 @@ AC_ARG_ENABLE([unitTestDockerSupport],
               case "${enableval}" in
                 yes)
                   UNIT_TEST_DOCKER_SUPPORT=true
-                  m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile source/test/service_routed/Makefile source/test/service_ipv6/Makefile source/test/service_udhcpc/Makefile source/test/service_dhcp/Makefile source/test/service_wan/Makefile])])
+                  m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile source/test/service_routed/Makefile source/test/service_ipv6/Makefile source/test/service_udhcpc/Makefile source/test/service_dhcp/Makefile source/test/service_wan/Makefile source/test/apply_system_defaults/Makefile])])
                   ;;
                 no)
                   UNIT_TEST_DOCKER_SUPPORT=false

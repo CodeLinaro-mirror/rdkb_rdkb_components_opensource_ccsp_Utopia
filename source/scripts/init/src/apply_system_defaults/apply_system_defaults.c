@@ -71,13 +71,19 @@
 
 #define PARTNER_ID_LEN 64
 
+#ifndef UNIT_TEST_DOCKER_SUPPORT
+#define STATIC static
+#else
+#define STATIC
+#endif
+
 static int   syscfg_dirty;
 
 #define DEFAULT_FILE "/etc/utopia/system_defaults"
 #define SE_NAME "system_default_set"
 
-static int global_fd = 0;
-static token_t global_id;
+STATIC int global_fd = 0;
+STATIC token_t global_id;
 
 /*
    By default the variable "convert" will be set if $Version is found in
@@ -1203,13 +1209,23 @@ static int ApplyPartnersObjectItemsIntoSysevents( char *pcPartnerID )
    return 0;
 }
 
-static void addInSysCfgdDB (char *key, char *value)
+STATIC void addInSysCfgdDB (char *key, char *value)
 {
    /* There are parameters which needs to be available in syscfg/PSM DBs
       Check if all of these parameters are SET into DBs
    */
    int IsPSMMigrationNeeded = 0;
 
+   //If WiFiPersonalization.Support is false, set redirection_flag to false to disable Captive Portal
+   if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.RDKB_UIBranding.WiFiPersonalization.Support") )
+   {
+      if ( 0 == strcmp(value, "false") )
+      {
+         APPLY_PRINT("%s: Setting redirection_flag and WiFiPersonalizationSupport to FALSE\n", __FUNCTION__);
+         set_syscfg_partner_values( value, "redirection_flag" );
+         set_syscfg_partner_values( value, "WiFiPersonalizationSupport" );
+      }
+   }
    if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.SyndicationFlowControl.InitialForwardedMark") )
    {
       if ( 0 == IsValuePresentinSyscfgDB( "DSCP_InitialForwardedMark" ) )
@@ -1462,12 +1478,22 @@ static void addInSysCfgdDB (char *key, char *value)
    }
 }
 
-static void updateSysCfgdDB (char *key, char *value)
+STATIC void updateSysCfgdDB (char *key, char *value)
 {
    /* There are parameters which needs to be available in syscfg/PSM DBs
       Check if all of these parameters are SET into DBs
    */
    int IsPSMMigrationNeeded = 0;
+   //If WiFiPersonalization.Support is false, set redirection_flag to false to disable Captive Portal
+   if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.RDKB_UIBranding.WiFiPersonalization.Support") )
+   {
+      if ( 0 == strcmp(value, "false") )
+      {
+         APPLY_PRINT("%s: Setting redirection_flag and WiFiPersonalizationSupport to FALSE\n", __FUNCTION__);
+         set_syscfg_partner_values( value, "redirection_flag" );
+         set_syscfg_partner_values( value, "WiFiPersonalizationSupport" );
+      }
+   }
    if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.SyndicationFlowControl.InitialForwardedMark") )
    {
          set_syscfg_partner_values( value,"DSCP_InitialForwardedMark" );
@@ -1778,7 +1804,7 @@ static int init_bootstrap_json (char *partner_nvram_obj, char *partner_etc_obj, 
    return 0;
 }
 
-static int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_obj, char *PartnerID)
+STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_obj, char *PartnerID)
 {
    APPLY_PRINT("%s\n", __FUNCTION__);
 
@@ -1900,6 +1926,17 @@ static int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
                  APPLY_PRINT("syscfg_unset failed\n");
               }
            }
+         }
+
+         //If WiFiPersonalization.Support is false, set redirection_flag to false to disable Captive Portal
+         if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.RDKB_UIBranding.WiFiPersonalization.Support") )
+         {
+            if ( 0 == strcmp(value, "false") )
+            {
+               APPLY_PRINT("%s: Setting redirection_flag and WiFiPersonalizationSupport to FALSE\n", __FUNCTION__);
+               set_syscfg_partner_values( value, "redirection_flag" );
+               set_syscfg_partner_values( value, "WiFiPersonalizationSupport" );
+            }
          }
          #if defined (SPEED_BOOST_SUPPORTED)
 
@@ -2986,7 +3023,12 @@ static void getPartnerIdWithRetry(char* buf, char* PartnerID)
 /*
  * main()
  */
-int main( int argc, char **argv )
+
+ #ifdef UNIT_TEST_DOCKER_SUPPORT
+ int ApplySystemDefaults_main(int argc, char *argv[])
+ #else
+ int main(int argc, char *argv[])
+ #endif
 {
    char *ptr_etc_json = NULL, *ptr_nvram_json = NULL, *ptr_nvram_bs_json = NULL, *db_val = NULL;
    char  PartnerID[ PARTNER_ID_LEN+255 ]  = { 0 };
