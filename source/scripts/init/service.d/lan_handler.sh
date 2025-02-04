@@ -54,7 +54,7 @@ SERVICE_NAME="lan_handler"
 
 POSTD_START_FILE="/tmp/.postd_started"
 
-RPI_SPECIFIC=`grep -i "BOX_TYPE" /etc/device.properties  | cut -f2 -d=`
+RPI_SPECIFIC=$BOX_TYPE
 #args: router IP, subnet mask
 ap_addr() {
     if [ "$2" ]; then
