@@ -716,26 +716,31 @@ static int getFactoryPartnerId (char *pValue)
 
 static int validatePartnerId (char *PartnerID)
 {
+   int result = 0;
    char* ptr_etc_jsons = NULL;
    cJSON * subitem_etc = NULL;
    ptr_etc_jsons = json_file_parse( PARTNERS_INFO_FILE_ETC );
    if(ptr_etc_jsons)
    {
       cJSON * root_etc_json = cJSON_Parse(ptr_etc_jsons);
-      subitem_etc = cJSON_GetObjectItem(root_etc_json,PartnerID);
-      if(subitem_etc)
+      if(root_etc_json)
       {
-      	printf("##############Partner ID Found\n");
-        return 1;
+         subitem_etc = cJSON_GetObjectItem(root_etc_json,PartnerID);
+         if(subitem_etc)
+         {
+            printf("##############Partner ID Found\n");
+            result = 1;
+         }
+         else
+         {
+            printf("Partner ID NOT Found\n");
+            sprintf(PartnerID,"%s","unknown");
+         }
+         cJSON_Delete(root_etc_json);
       }
-      else
-      {
-      	printf("Partner ID NOT Found\n");
-      	sprintf(PartnerID,"%s","unknown");
-        return 0;
-      }
+      free(ptr_etc_jsons);
    }
-   return 0;
+   return result;
 }
 
 static int get_PartnerID (char *PartnerID)
@@ -940,16 +945,20 @@ static void ValidateAndUpdatePartnerVersionParam (cJSON *root_etc_json, cJSON *r
         if (!version_nvram)
         {
             printf ("\n NVRAM VERSION not found  ######## etc %s \n", version_etc);
-            cJSON_InsertItemInArray(root_nvram_json,0,cJSON_GetObjectItem(root_etc_json,"properties") );
+            cJSON_InsertItemInArray(root_nvram_json, 0, cJSON_DetachItemFromObject(root_etc_json,"properties") );
         }
         else
         {
             printf("\n NVRAM VERSION FOUND\n");
-            cJSON_ReplaceItemInArray(root_nvram_json,0,cJSON_GetObjectItem(root_etc_json,"properties") );
+            cJSON_ReplaceItemInArray(root_nvram_json, 0, cJSON_DetachItemFromObject(root_etc_json,"properties") );
         }
         char *out = cJSON_Print(root_nvram_json);
-        writeToJson(out, BOOTSTRAP_INFO_FILE);
-        out = NULL;
+        if(out)
+        {
+         writeToJson(out, BOOTSTRAP_INFO_FILE);
+         free(out);
+         out = NULL;
+        }
     }
 }
 
@@ -1079,30 +1088,38 @@ static int addParamInPartnersFile (char *pKey, char *PartnerId, char *pValue)
 				 cJSON_ReplaceItemInObject(partnerObj, pKey, cJSON_CreateString(pValue));
 			 }
 			 cJsonOut = cJSON_Print(json);
-			 configUpdateStatus = writeToJson(cJsonOut, PARTNERS_INFO_FILE);
-			 if ( configUpdateStatus)
-			 {
-				 APPLY_PRINT( "Failed to update value for %s partner\n",PartnerId);
-				 APPLY_PRINT( "Param:%s\n",pKey);
-		 		 cJSON_Delete(json);
-				 return -1;
-			 }
-		         APPLY_PRINT( "Added/Updated Value for %s partner\n",PartnerId);
+          if(cJsonOut)
+          {
+               configUpdateStatus = writeToJson(cJsonOut, PARTNERS_INFO_FILE);
+               if ( configUpdateStatus)
+               {
+                   APPLY_PRINT( "Failed to update value for %s partner\n",PartnerId);
+                   APPLY_PRINT( "Param:%s\n",pKey);
+                   free(cJsonOut);
+                   cJSON_Delete(json);
+                   free(data);
+                   return -1;
+               }
+               free(cJsonOut);
+          }
+          APPLY_PRINT( "Added/Updated Value for %s partner\n",PartnerId);
 			 APPLY_PRINT( "Param:%s - Value:%s\n",pKey,pValue);
 		 }
 		 else
 		 {
 		 	APPLY_PRINT("%s - PARTNER ID OBJECT Value is NULL\n", __FUNCTION__ );
 		 	cJSON_Delete(json);
+         free(data);
 		 	return -1;
 		 }
 		 cJSON_Delete(json);
+       free(data);
 	  }
 	  else
 	  {
 		APPLY_PRINT("PARTNERS_INFO_FILE %s is empty\n", PARTNERS_INFO_FILE);
 		/* CID: 66806 Resource leak*/
-                free(data);
+       free(data);
 		return -1;
 	  }
 	 return 0;
@@ -1803,9 +1820,13 @@ static int init_bootstrap_json (char *partner_nvram_obj, char *partner_etc_obj, 
       cJSON_AddItemToObject(root_nvram_bs_json, PartnerID, newPartnerObj);
 
       char *out = cJSON_Print(root_nvram_bs_json);
-      //APPLY_PRINT("out1 = %s\n", out);
-      writeToJson(out, BOOTSTRAP_INFO_FILE);
-      out = NULL;
+      if(out)
+      {
+         //APPLY_PRINT("out1 = %s\n", out);
+         writeToJson(out, BOOTSTRAP_INFO_FILE);
+         free(out);
+         out = NULL;
+      }
    }
 
    cJSON_Delete(root_nvram_json);
@@ -1819,7 +1840,11 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
    APPLY_PRINT("%s\n", __FUNCTION__);
 
    cJSON * root_nvram_bs_json = cJSON_Parse(partner_nvram_bs_obj);
-   cJSON * partnerobj_nvram_bs = cJSON_GetObjectItem(root_nvram_bs_json,PartnerID);
+   cJSON * partnerobj_nvram_bs = NULL;
+   if(root_nvram_bs_json)
+   {
+      partnerobj_nvram_bs = cJSON_GetObjectItem(root_nvram_bs_json,PartnerID);
+   }
 
    /* The below block of code identifies any unknown/wrong objects in nvram/bootstrap.json and removes them */
    if (!root_nvram_bs_json || !partnerobj_nvram_bs)
@@ -1830,6 +1855,7 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
       char *ptr_nvram_json = json_file_parse( PARTNERS_INFO_FILE );
       init_bootstrap_json( ptr_nvram_json, partner_etc_obj, PartnerID );
       free(ptr_nvram_json);
+      cJSON_Delete(root_nvram_bs_json);
       return -1;
    }
 
@@ -1847,11 +1873,16 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
          printf("Remove unknown object: %s\n", current_key);
       }
    }
+   cJSON_Delete(root_nvram_bs_json_copy);
    if (jsonChanged)
    {
       char *out = cJSON_Print(root_nvram_bs_json);
-      writeToJson(out, BOOTSTRAP_INFO_FILE);
-      out = NULL;
+      if(out)
+      {
+         writeToJson(out, BOOTSTRAP_INFO_FILE);
+         free(out);
+         out = NULL;
+      }
    }
    /* The above code block can be removed in future when we ae sure there will be no unknown objects in bootstrap.json */
 
@@ -1862,8 +1893,13 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
    bool do_compare = false;
    cJSON * root_etc_json = cJSON_Parse(partner_etc_obj);
    ValidateAndUpdatePartnerVersionParam(root_etc_json, root_nvram_bs_json, &do_compare,PartnerID);
+   cJSON_Delete(root_nvram_bs_json);
+   cJSON_Delete(root_etc_json);
    if (!do_compare && !jsonChanged)
+   {
       return -1;
+   }
+
    printf("versions are different...\n");
    char* ptr_nvram_bs_json = NULL;
    ptr_nvram_bs_json = json_file_parse( BOOTSTRAP_INFO_FILE );
@@ -1876,6 +1912,10 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
    cJSON * ApplySyseventObj = NULL;
    char *key=NULL, *value=NULL;
    char devModel[20] = "\0";
+   if(ptr_nvram_bs_json)
+   {
+      free(ptr_nvram_bs_json);
+   }
 
    GetDevicePropertiesEntry (devModel, sizeof(devModel), "MODEL_NUM");
    overrideObj = cJSON_GetObjectItem (cJSON_GetObjectItem(subitem_etc, "override"), devModel);
@@ -1916,9 +1956,15 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
          }
 
          if (value_obj)
+         {
             value = value_obj->valuestring;
+         }
          else
+         {
+            cJSON_Delete(root_nvram_bs_json);
+            cJSON_Delete(root_etc_json);
             return -1;
+         }
 
          APPLY_PRINT("key = %s value = %s\n", key, value);
 
@@ -1987,16 +2033,28 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
             cJSON * value_bs_obj = cJSON_GetObjectItem(bs_obj, "ActiveValue");
             char * value_bs = NULL;
             if (value_bs_obj)
+            {
                value_bs = value_bs_obj->valuestring;
+            }
             else
+            {
+               cJSON_Delete(root_nvram_bs_json);
+               cJSON_Delete(root_etc_json);
                return -1;
+            }
 
             cJSON * source_bs_obj = cJSON_GetObjectItem(bs_obj, "UpdateSource");
             char * source_bs = NULL;
             if (source_bs_obj)
+            {
                source_bs = source_bs_obj->valuestring;
+            }
             else
+            {
+               cJSON_Delete(root_nvram_bs_json);
+               cJSON_Delete(root_etc_json);
                return -1;
+            }
             //printf("value_bs = %s, source_bs = %s\n", value_bs, source_bs);
             if (strcmp(value, value_bs))
             {
@@ -2041,9 +2099,13 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
       }
 
       char *out = cJSON_Print(root_nvram_bs_json);
-      //printf("compare out = %s\n", out);
-      writeToJson(out, BOOTSTRAP_INFO_FILE);
-      out = NULL;
+      if(out)
+      {
+         //printf("compare out = %s\n", out);
+         writeToJson(out, BOOTSTRAP_INFO_FILE);
+         free(out);
+         out = NULL;
+      }
    }
 
    cJSON_Delete(root_nvram_bs_json);
@@ -2884,6 +2946,7 @@ if ( paramObjVal != NULL )
 			{
 				APPLY_PRINT("%s - partnerObj Object is NULL\n", __FUNCTION__ );
 			}
+         cJSON_Delete(json);
 		}
 	}
 
