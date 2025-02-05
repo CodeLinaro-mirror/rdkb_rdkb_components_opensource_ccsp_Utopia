@@ -781,5 +781,5 @@ if [ "$MODEL_NUM" = "DPC3939B" ] || [ "$MODEL_NUM" = "DPC3941B" ]; then
 fi
 
 if [ "$BOX_TYPE" = "VNTXER5" ]; then
-       /bin/sh -c '(/etc/vbv_reboot_reason.sh)'
+       /etc/vbv_reboot_reason.sh &
 fi
