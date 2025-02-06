@@ -13,6 +13,7 @@
 #include <mocks/mock_psm.h>
 #include <mocks/mock_messagebus.h>
 #include <mocks/mock_ansc_memory.h>
+#include <mocks/mock_libnet.h>
 
 using namespace std;
 using namespace testing;
@@ -30,6 +31,7 @@ SyseventMock* g_syseventMock = nullptr;
 PsmMock * g_psmMock = nullptr;
 MessageBusMock * g_messagebusMock = nullptr;
 AnscMemoryMock * g_anscMemoryMock = nullptr;
+LibnetMock * g_libnetMock = nullptr;
 
 struct serv_routed {
     int         sefd;
@@ -86,6 +88,7 @@ protected:
     PsmMock mockedPsm;
     MessageBusMock mockedMessageBus;
     AnscMemoryMock mockedAnscMemory;
+    LibnetMock mockedLibnet;
     service_routed_test() {
         g_syscfgMock = &mockedsyscfg;
         g_securewrapperMock = &mockedSecureWrapper;
@@ -96,6 +99,7 @@ protected:
         g_psmMock = &mockedPsm;
         g_messagebusMock = &mockedMessageBus;
         g_anscMemoryMock = &mockedAnscMemory;
+        g_libnetMock = &mockedLibnet;
     }
     virtual ~service_routed_test() {
         g_syscfgMock = nullptr;
@@ -107,6 +111,7 @@ protected:
         g_psmMock = nullptr;
         g_messagebusMock = nullptr;
         g_anscMemoryMock = nullptr;
+        g_libnetMock = nullptr;
     }
     virtual void SetUp() override {
         printf("service_routed_test::SetUp\n");  
@@ -377,8 +382,16 @@ TEST_F(service_routed_test, SuccessfulSetIPv6RouteS) {
         .WillOnce(DoAll(SetArrayArgument<3>(mockPrefix, mockPrefix + strlen(mockPrefix) + 1), Return(0)));
     EXPECT_CALL(*g_syseventMock, sysevent_get(sr.sefd, sr.setok, StrEq("eth1_ipaddr_v6_ula"), _, 128))
         .WillOnce(DoAll(SetArrayArgument<3>(mockPrefix, mockPrefix + strlen(mockPrefix) + 1), Return(0)));
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(_, _))
-        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_libnetMock,route_add(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
+    EXPECT_CALL(*g_libnetMock,addr_add(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
     int result = routeset_ula(&sr);
     EXPECT_EQ(result, 0);
 }
@@ -421,10 +434,14 @@ TEST_F(service_routed_test, IPv6subPrefixIsFalseS) {
         .WillOnce(DoAll(SetArrayArgument<3>(mockPrefixLen, mockPrefixLen + strlen(mockPrefixLen) + 1), Return(0)));
     EXPECT_CALL(*g_syscfgMock, syscfg_get(nullptr, "IPv6subPrefix", _, 100))
         .WillOnce(DoAll(SetArrayArgument<2>(mockIPv6subPrefix, mockIPv6subPrefix + strlen(mockIPv6subPrefix) + 1), Return(0)));
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(StrEq("ip -6 route add 2001:db8::/64 dev eth0"), _))
-        .WillOnce(Return(0));  
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(StrEq("ip -6 addr add 2001:db8::1/64 dev eth0"), _))
-        .WillOnce(Return(0)); 
+    EXPECT_CALL(*g_libnetMock,route_add(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
+    EXPECT_CALL(*g_libnetMock,addr_add(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
     int result = routeset_ula(&sr);
     EXPECT_EQ(result, 0);
 }
@@ -468,8 +485,16 @@ TEST_F(service_routed_test, SuccessfulUnsetIPv6Route) {
         .WillOnce(DoAll(SetArrayArgument<3>(mockPrefix, mockPrefix + strlen(mockPrefix) + 1), Return(0)));
     EXPECT_CALL(*g_syseventMock, sysevent_get(sr.sefd, sr.setok, StrEq("eth1_ipaddr_v6_ula"), _, 128))
         .WillOnce(DoAll(SetArrayArgument<3>(mockPrefix, mockPrefix + strlen(mockPrefix) + 1), Return(0)));
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(_, _))
-        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_libnetMock,route_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));  
+    EXPECT_CALL(*g_libnetMock,addr_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillOnce(Return(CNL_STATUS_SUCCESS)); 
     int result = routeunset_ula(&sr);
     EXPECT_EQ(result, 0);
 }
@@ -512,10 +537,14 @@ TEST_F(service_routed_test, IPv6subPrefixIsFalse) {
         .WillOnce(DoAll(SetArrayArgument<3>(mockPrefixLen, mockPrefixLen + strlen(mockPrefixLen) + 1), Return(0)));
     EXPECT_CALL(*g_syscfgMock, syscfg_get(nullptr, "IPv6subPrefix", _, 100))
         .WillOnce(DoAll(SetArrayArgument<2>(mockIPv6subPrefix, mockIPv6subPrefix + strlen(mockIPv6subPrefix) + 1), Return(0)));
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(StrEq("ip -6 route del 2001:db8::/64 dev eth0"), _))
-        .WillOnce(Return(0));  
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(StrEq("ip -6 addr del 2001:db8::1/64 dev eth0"), _))
-        .WillOnce(Return(0));  
+    EXPECT_CALL(*g_libnetMock,route_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));  
+    EXPECT_CALL(*g_libnetMock,addr_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));  
     int result = routeunset_ula(&sr);
     EXPECT_EQ(result, 0);
 }
@@ -523,16 +552,20 @@ TEST_F(service_routed_test, IPv6subPrefixIsFalse) {
 TEST_F(service_routed_test, ReturnsWhenVSecureSystemFailsSetV6Route) {
     const char* ifname = "brlan0";
     const char* route_addr = "2001:db8::1";
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(testing::StrEq("ip -6 route add 2001:db8::1 dev brlan0"), testing::_))
-        .WillOnce(testing::Return(-1));
+    EXPECT_CALL(*g_libnetMock,route_add(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
     SetV6Route(const_cast<char*>(ifname), const_cast<char*>(route_addr));
 }
 //Test cases for UnSetV6Route
 TEST_F(service_routed_test, ReturnsWhenVSecureSystemFailsUnSetV6Route) {
     const char* ifname = "brlan0";
     const char* route_addr = "2001:db8::1";
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(testing::StrEq("ip -6 route del 2001:db8::1 dev brlan0"), testing::_))
-        .WillOnce(testing::Return(-1));
+    EXPECT_CALL(*g_libnetMock,route_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
     UnSetV6Route(const_cast<char*>(ifname), const_cast<char*>(route_addr));
 }
 //Test cases for AssignIpv6Addr
@@ -540,8 +573,10 @@ TEST_F(service_routed_test, ReturnsWhenVSecureSystemFailsAssignIpv6Addr) {
     const char* ifname = "brlan0";
     const char* ipv6Addr = "2001:db8::1";
     int prefix_len = 64;
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(testing::StrEq("ip -6 addr add 2001:db8::11/64 dev brlan0"), testing::_))
-        .WillOnce(testing::Return(-1));
+    EXPECT_CALL(*g_libnetMock,addr_add(testing::_))
+      .Times(testing::AtLeast(1))
+      .WillOnce(Return(CNL_STATUS_FAILURE))
+      .WillOnce(Return(CNL_STATUS_SUCCESS));
     AssignIpv6Addr(const_cast<char*>(ifname), const_cast<char*>(ipv6Addr), prefix_len);
 }
 //Test cases for DelIpv6Addr
@@ -549,8 +584,10 @@ TEST_F(service_routed_test, ReturnsWhenVSecureSystemFailsDelIpv6Addr) {
     const char* ifname = "brlan0";
     const char* ipv6Addr = "2001:db8::1";
     int prefix_len = 64;
-    EXPECT_CALL(*g_securewrapperMock, v_secure_system(testing::StrEq("ip -6 addr del 2001:db8::11/64 dev brlan0"), testing::_))
-        .WillOnce(testing::Return(-1));
+    EXPECT_CALL(*g_libnetMock,addr_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
     DelIpv6Addr(const_cast<char*>(ifname), const_cast<char*>(ipv6Addr), prefix_len);
 }
 //Test cases for gen_ripd_conf
@@ -760,8 +797,14 @@ TEST_F(service_routed_test, RouteSet) {
     }
     EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("current_wan_ifname"), NotNull(), _))
         .WillOnce(DoAll(SetArrayArgument<3>("eth0", "eth0" + 5), Return(0)));
-    EXPECT_CALL(*g_securewrapperMock, vsystem(_, _))
-        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_libnetMock,rule_add(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillRepeatedly(Return(CNL_STATUS_FAILURE));
+    EXPECT_CALL(*g_libnetMock,rule_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillRepeatedly(Return(CNL_STATUS_FAILURE));
     int result = route_set(&sr);
     EXPECT_EQ(result, 0);
 }
@@ -783,6 +826,10 @@ TEST_F(service_routed_test, RouteUnset) {
         EXPECT_CALL(*g_securewrapperMock, v_secure_system(_, _))
             .WillRepeatedly(Return(0));
     }
+    EXPECT_CALL(*g_libnetMock,rule_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_SUCCESS))
+        .WillRepeatedly(Return(CNL_STATUS_FAILURE));
     int result = route_unset(&sr);
     EXPECT_EQ(result, 0);
 }

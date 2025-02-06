@@ -40,3 +40,6 @@ service_routed_LDADD = $(top_builddir)/source/util/utils/libutopiautil.la \
                        $(top_builddir)/source/utctx/lib/libutctx.la \
                        $(top_builddir)/source/ulog/libulog.la \
                        -ltelemetry_msgsender
+if CORE_NET_LIB_FEATURE_SUPPORT
+service_routed_LDFLAGS = -lnet
+endif

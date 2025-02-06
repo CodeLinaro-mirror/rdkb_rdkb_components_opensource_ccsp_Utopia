@@ -38,6 +38,7 @@
 #include <mocks/mock_messagebus.h>
 #include <mocks/mock_ansc_memory.h>
 #include <experimental/filesystem>
+#include <mocks/mock_libnet.h>
 #ifndef MULTILAN_FEATURE
 #define MAX_LAN_IF_NUM              3
 #else
@@ -57,6 +58,7 @@ extern SecureWrapperMock *g_securewrapperMock;
 extern PsmMock *g_psmMock;
 extern MessageBusMock *g_messagebusMock;
 extern AnscMemoryMock *g_anscMemoryMock;
+extern LibnetMock *g_libnetMock;
 
 using namespace std;
 using std::experimental::filesystem::exists;
@@ -66,6 +68,7 @@ using ::testing::StrEq;
 using ::testing::HasSubstr;
 using ::testing::SetArgPointee;
 using ::testing::DoAll;
+using ::testing::AnyNumber;
 
 extern "C" {
 #include "util.h"

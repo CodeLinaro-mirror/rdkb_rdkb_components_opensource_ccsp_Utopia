@@ -28,12 +28,13 @@ service_routed_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gte
                         -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                         -DUNIT_TEST_DOCKER_SUPPORT \
                         -DMULTILAN_FEATURE \
-                        -DWAN_FAILOVER_SUPPORTED 
-                        
+                        -DWAN_FAILOVER_SUPPORTED \
+                        -DCORE_NET_LIB
+
 service_routed_gtest_bin_SOURCES = $(top_builddir)/source/service_routed/service_routed.c \
                                    service_routed.cpp \
-                                   gtest_main.cpp 
-                                   
+                                   gtest_main.cpp
+
 service_routed_gtest_bin_LDADD = $(HOME)/usr/local/lib/libmock_ccsp_common.la \
                                $(HOME)/usr/local/lib/libmock_secure_wrapper.la \
                                $(HOME)/usr/local/lib/libmock_safec_lib.la \
@@ -45,9 +46,10 @@ service_routed_gtest_bin_LDADD = $(HOME)/usr/local/lib/libmock_ccsp_common.la \
                                $(HOME)/usr/local/lib/libmock_utopia.la  \
                                $(HOME)/usr/local/lib/libmock_telemetry.la \
                                $(HOME)/usr/local/lib/libmock_psm.la \
-                               $(HOME)/usr/local/lib/libmock_ccsp_common.la 
+                               $(HOME)/usr/local/lib/libmock_ccsp_common.la \
+                               $(HOME)/usr/local/lib/libmock_libnet.la
 
-                               
+
 service_routed_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -pthread
 #Code Coverage Flags
 AM_CFLAGS += -fprofile-arcs -ftest-coverage

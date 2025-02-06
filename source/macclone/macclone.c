@@ -55,6 +55,11 @@
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 #include "secure_wrapper.h"
+#include <stdint.h>
+#ifdef CORE_NET_LIB
+#include <libnet.h>
+#define DEBUG1(args...) fprintf(stderr, ## args)
+#endif
 /*
  * Defines and static variables
  */
@@ -92,14 +97,26 @@ int addr_set(const char *intf, const char *addr)
 {
     int fd;
     struct ifreq ifr;
-
+#ifdef CORE_NET_LIB
+    libnet_status status;
+#endif
     if ((fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0)
         return -1;
 
     /*
      * Setting MAC address to interface.
-     */ 
+     */
+#ifdef CORE_NET_LIB
+        status = interface_down((char*)intf); 
+        if (status != CNL_STATUS_SUCCESS) {
+           DEBUG1("Failed to bring interface %s down\n", intf);
+        }  
+        else {
+           DEBUG1("Successfully brought interface %s down\n", intf);
+        }
+#else	
     v_secure_system("ifconfig %s down", intf); /* bring down interface */
+#endif
 
     memset(&ifr, 0, sizeof(struct ifreq));
     strncpy(ifr.ifr_name, intf, 8);
@@ -125,7 +142,17 @@ int addr_set(const char *intf, const char *addr)
     } else {
         DEBUG("macclone: invalid hardware address\n");
     }
+#ifdef CORE_NET_LIB
+        status = interface_up((char*)intf);
+        if (status != CNL_STATUS_SUCCESS) {
+           DEBUG1("Failed to bring interface %s up\n", intf);
+        }
+        else {
+           DEBUG1("Successfully brought interface %s up\n", intf);
+        }
+#else
     v_secure_system("ifconfig %s up", intf); /* bring up interface */
+#endif
 
     close(fd);
 

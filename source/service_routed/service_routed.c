@@ -82,6 +82,19 @@ static const char* const service_routed_component_id = "ccsp.routed";
 #define STATIC static 
 #endif
 
+#ifdef CORE_NET_LIB
+#define LOG_FILE_1 "/rdklogs/logs/Consolelog.txt.0"
+#define DEG_PRINT1(fmt, ...)   {\
+   FILE *fptr1 = fopen ( LOG_FILE_1 , "a+");\
+   if (fptr1)\
+   {\
+          fprintf(fptr1,"%s: line:%d " fmt "\n",__func__, __LINE__, ##__VA_ARGS__);\
+          fclose(fptr1);\
+   }\
+}
+#include <libnet.h>
+#endif
+
 #define ZEBRA_PID_FILE  "/var/zebra.pid"
 #define RIPD_PID_FILE   "/var/ripd.pid"
 #define ZEBRA_CONF_FILE "/var/zebra.conf"
@@ -134,7 +147,7 @@ struct serv_routed {
    if (logfp)\
    {\
         fprintf(logfp,fmt);\
-        fclose(logfp);\
+	fclose(logfp);\
    }\
 }\
 
@@ -296,8 +309,25 @@ STATIC int getULAAddressFromInterface(char *ulaAddress)
     int status = FALSE;
     FILE *fpStream = NULL;
     char line[128] = {0};
-
+#ifdef CORE_NET_LIB
+    char ipv6_address[48] = {0};
+    int ula_max_length = 48;
+    libnet_status status1 = get_ipv6_address("brlan0", ipv6_address, sizeof(ipv6_address));
+    if (status1 == CNL_STATUS_SUCCESS) {
+         DEG_PRINT1("Successfully retrieved global IPv6 address for brlan0\n");
+	 if (!strncmp(ipv6_address, "fd", 2) || !strncmp(ipv6_address, "fc", 2)) {
+            strncpy(ulaAddress, ipv6_address, ula_max_length - 1); 
+            ulaAddress[ula_max_length - 1] = '\0';  
+            status = TRUE;
+	 }
+    }      
+    else{
+         DEG_PRINT1("Failed to retrieve global IPv6 address for brlan0\n");
+    }    
+    return status;
+#else
     fpStream = v_secure_popen("r","ifconfig brlan0 | grep inet6 | grep Global| awk '/inet6/{print $3}' | cut -d'/' -f1");
+#endif
     if (fpStream != NULL)
     {
         while ( NULL != fgets ( line, sizeof (line), fpStream ) )
@@ -491,11 +521,44 @@ STATIC int route_set(struct serv_routed *sr)
            This may run multipe times, so remove existing rules before
            adding them again.
         */
-        v_secure_system("ip -6 rule del iif %s table all_lans" "; "
+#ifdef CORE_NET_LIB
+        libnet_status status; 
+	status = rule_delete_va_arg("-6 iif %s table all_lans", lan_if);
+        if (status != CNL_STATUS_SUCCESS) {
+           DEG_PRINT1("Failed to delete ipv6 rule: iif %s table all_lans\n", lan_if);
+        } 
+        else {
+           DEG_PRINT1("Successfully deleted ipv6 rule: iif %s table all_lans\n", lan_if);
+        }
+        status = rule_add_va_arg("-6 iif %s table all_lans", lan_if);
+        if (status != CNL_STATUS_SUCCESS) {
+           DEG_PRINT1("Failed to add ipv6 rule: iif %s table all_lans\n", lan_if);
+        } 
+        else {
+           DEG_PRINT1("Successfully added ipv6 rule: iif %s table all_lans\n", lan_if);
+        }
+        status = rule_delete_va_arg("-6 iif %s table erouter", lan_if);
+        if (status != CNL_STATUS_SUCCESS) {
+           DEG_PRINT1("Failed to delete ipv6 rule: iif %s table erouter\n", lan_if);
+        }   
+        else {
+           DEG_PRINT1("Successfully deleted ipv6 rule: iif %s table erouter\n", lan_if);
+        }
+        status = rule_add_va_arg("-6 iif %s table erouter", lan_if);
+        if (status != CNL_STATUS_SUCCESS) {
+           DEG_PRINT1("Failed to add ipv6 rule: iif %s table erouter\n", lan_if);
+        }
+        else {
+           DEG_PRINT1("Successfully added ipv6 rule: iif %s table erouter\n", lan_if);
+        }
+
+#else
+	v_secure_system("ip -6 rule del iif %s table all_lans" "; "
                         "ip -6 rule add iif %s table all_lans" "; "
                         "ip -6 rule del iif %s table erouter" "; "
                         "ip -6 rule add iif %s table erouter",
                         lan_if, lan_if, lan_if, lan_if);
+#endif
     }
 #endif
 
@@ -505,7 +568,18 @@ STATIC int route_set(struct serv_routed *sr)
 #endif /* _SCER11BEL_PRODUCT_REQ_ */
     {
         /*Clean 'iif brlan0 table erouter' if exist already*/
-        v_secure_system("ip -6 rule del iif brlan0 table erouter");
+#ifdef CORE_NET_LIB
+        libnet_status status1;
+	status1 = rule_delete("-6 iif brlan0 table erouter");
+        if (status1 != CNL_STATUS_SUCCESS) {
+            DEG_PRINT1("Failed to delete rule: iif brlan0 table erouter\n");
+        }
+        else{
+            DEG_PRINT1("Successfully deleted rule: iif brlan0 table erouter\n");
+        }
+#else
+	v_secure_system("ip -6 rule del iif brlan0 table erouter");
+#endif
     }
 #endif
 
@@ -580,7 +654,9 @@ STATIC int route_unset(struct serv_routed *sr)
         /* CID fix : 334257*/
         strncpy(wanIface, "erouter0", sizeof(wanIface) - 1);
     }
-
+#ifdef CORE_NET_LIB
+    libnet_status status;
+#endif
 #if defined(CISCO_CONFIG_DHCPV6_PREFIX_DELEGATION) || defined(MULTILAN_FEATURE)
     unsigned int l2_insts[4] = {0};
     unsigned int enabled_iface_num = 0;
@@ -592,24 +668,81 @@ STATIC int route_unset(struct serv_routed *sr)
     for (i = 0; i < enabled_iface_num; i++) {
         snprintf(evt_name, sizeof(evt_name), "multinet_%d-name", l2_insts[i]);
         sysevent_get(sr->sefd, sr->setok, evt_name, lan_if, sizeof(lan_if));
-
+#ifdef CORE_NET_LIB
+        status = rule_delete_va_arg("-6 iif %s table all_lans", lan_if);
+	if (status != CNL_STATUS_SUCCESS) {
+            DEG_PRINT1("Failed to delete ipv6 rule for table all_lans\n");
+        }
+        else{
+            DEG_PRINT1("Successfully deleted ipv6 rule for table all_lans\n");
+        }
+        status = rule_delete_va_arg("-6 iif %s table erouter", lan_if);
+	if (status != CNL_STATUS_SUCCESS) {
+            DEG_PRINT1("Failed to delete ipv6 rule for erouter\n");
+        }
+        else{
+            DEG_PRINT1("Successfully deleted rule for erouter\n");
+        }
+#else
         v_secure_system("ip -6 rule del iif %s table all_lans", lan_if);
         v_secure_system("ip -6 rule del iif %s table erouter", lan_if);
+#endif
     }
 
 #elif !defined(WAN_MANAGER_UNIFICATION_ENABLED) //Default route is configured WanManager.
 #if defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_)) || defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+#ifdef CORE_NET_LIB
+    status = rule_delete("-6 iif brlan0 table erouter");
+    if (status != CNL_STATUS_SUCCESS) {
+        DEG_PRINT1("Failed to delete ipv6 rule iff brlan0 table erouter\n");
+    }
+    else{
+        DEG_PRINT1("Successfully deleted ipv6 rule iff brlan0 table erouter\n");
+    }
+    status = route_delete_va_arg("-6 default dev %s table erouter", wanIface);
+    if (status != CNL_STATUS_SUCCESS) {
+        DEG_PRINT1("Failed to delete ipv6 route for %s table erouter\n",wanIface);
+        return -1;
+    }
+    else{
+        DEG_PRINT1("Successfully deleted ipv6 route for %s table erouter\n",wanIface);
+    }
+#else
     vsystem("ip -6 rule del iif brlan0 table erouter");
     if (vsystem("ip -6 route del default dev %s table erouter", wanIface) != 0) {
         return -1;
+    }
+#endif
+#else
+#ifdef CORE_NET_LIB
+    libnet_status status_rule;
+    status = route_delete_va_arg("-6 default dev %s table erouter", wanIface);
+    status_rule = rule_delete("-6 iif brlan0 table erouter");
+    if(status == CNL_STATUS_SUCCESS && status_rule == CNL_STATUS_SUCCESS){
+       DEG_PRINT1("Successfully deleted route and rule for erouter0\n");
+    }
+    else{
+       DEG_PRINT1("Failed to delete route and rule for erouter0\n");
+       return -1;
     }
 #else
     if (vsystem("ip -6 route del default dev %s table erouter"
             " && ip -6 rule del iif brlan0 table erouter", wanIface) != 0)
         return -1;
 #endif
+#endif
+#else
+#ifdef CORE_NET_LIB
+    status = rule_delete("-6 iif brlan0 table erouter");
+    if (status != CNL_STATUS_SUCCESS) {
+        DEG_PRINT1("Failed to delete ipv6 rule for iff brlan0 table erouter\n");
+    }
+    else{
+        DEG_PRINT1("Successfully deleted ipv6 rule for iff brlan0 table erouter\n");
+    }
 #else
     vsystem("ip -6 rule del iif brlan0 table erouter");
+#endif
 #endif
     return 0;
 }
@@ -2216,22 +2349,66 @@ STATIC int serv_routed_term(struct serv_routed *sr)
 #ifdef WAN_FAILOVER_SUPPORTED
 STATIC void AssignIpv6Addr(char* ifname , char* ipv6Addr,int prefix_len)
 {
+#ifdef CORE_NET_LIB
+    libnet_status status;
+    status = addr_add_va_arg("-6 %s1/%d dev %s", ipv6Addr, prefix_len, ifname);
+    if(status == CNL_STATUS_SUCCESS){
+       DEG_PRINT1("Successfully added ipv6 address with %s %s %d \n",ifname,ipv6Addr,prefix_len);
+    }
+    else{
+       DEG_PRINT1("Failed to delete ipv6 address with %s %s %d \n",ifname,ipv6Addr,prefix_len);
+    }
+#else
     v_secure_system("ip -6 addr add %s1/%d dev %s", ipv6Addr,prefix_len,ifname);
+#endif
 }
 
 STATIC void DelIpv6Addr(char* ifname , char* ipv6Addr,int prefix_len)
 {
+#ifdef CORE_NET_LIB
+    libnet_status status;
+    status = addr_delete_va_arg("-6 %s1/%d dev %s", ipv6Addr, prefix_len, ifname);
+    if(status == CNL_STATUS_SUCCESS){
+       DEG_PRINT1("Successfully deleted ipv6 address with %s %s %d \n",ifname,ipv6Addr,prefix_len);
+    }
+    else{
+       DEG_PRINT1("Failed to delete ipv6 address with %s %s %d \n",ifname,ipv6Addr,prefix_len);
+    }
+#else
     v_secure_system("ip -6 addr del %s1/%d dev %s", ipv6Addr,prefix_len,ifname);
+#endif
 }
 
 STATIC void SetV6Route(char* ifname , char* route_addr)
 {
+#ifdef CORE_NET_LIB
+    libnet_status status;
+    status = route_add_va_arg("-6 %s dev %s", route_addr, ifname);
+    if (status != CNL_STATUS_SUCCESS) {
+        DEG_PRINT1("Failed to add ipv6 route %s %s\n",ifname,route_addr);
+    }
+    else{
+        DEG_PRINT1("Successfully added ipv6 route %s %s\n",ifname,route_addr);
+    }
+#else
     v_secure_system("ip -6 route add %s dev %s", route_addr,ifname);
+#endif
 }
 
 STATIC void UnSetV6Route(char* ifname , char* route_addr)
 {
+#ifdef CORE_NET_LIB
+    libnet_status status;
+    status = route_delete_va_arg("-6 %s dev %s", route_addr, ifname);
+    if (status != CNL_STATUS_SUCCESS) {
+       DEG_PRINT1("Failed to delete ipv6 route %s %s\n",ifname,route_addr);
+    }
+    else{
+       DEG_PRINT1("Successfully deleted ipv6 route %s %s\n",ifname,route_addr);
+    }
+#else
     v_secure_system("ip -6 route del %s dev %s", route_addr,ifname);
+#endif
 }
 
 // Function sets the route and assign the ULA address to lan interfaces

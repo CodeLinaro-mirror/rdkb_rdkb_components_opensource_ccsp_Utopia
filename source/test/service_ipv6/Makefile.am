@@ -29,7 +29,8 @@ service_ipv6_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest
 				  -I${top_srcdir}/source/util/utils \
                                   -I${top_srcdir}/source/service_ipv6 \
 				  -D_BWG_PRODUCT_REQ_ \
-                                  -DUNIT_TEST_DOCKER_SUPPORT
+                                  -DUNIT_TEST_DOCKER_SUPPORT \
+				  -DCORE_NET_LIB
 
 service_ipv6_gtest_bin_SOURCES  = ${top_srcdir}/source/service_ipv6/service_ipv6.c \
 				  service_ipv6_test.cpp \
@@ -46,7 +47,8 @@ service_ipv6_gtest_bin_LDADD = $(HOME)/usr/local/lib/libmock_rbus.la \
 			       $(HOME)/usr/local/lib/libmock_ccsp_common.la \
 			       $(HOME)/usr/local/lib/libmock_secure_wrapper.la \
 			       $(HOME)/usr/local/lib/libmock_util.la \
-			       $(HOME)/usr/local/lib/libmock_psm.la
+			       $(HOME)/usr/local/lib/libmock_psm.la \
+			       $(HOME)/usr/local/lib/libmock_libnet.la
 
 #code coverage flags
 AM_CFLAGS += -fprofile-arcs -ftest-coverage

@@ -37,3 +37,7 @@ macclone_LDADD = $(top_builddir)/source/syscfg/lib/libsyscfg.la \
                  $(top_builddir)/source/sysevent/lib/libsysevent.la \
                  $(top_builddir)/source/ulog/libulog.la \
                  $(top_builddir)/source/services/lib/libsrvmgr.la
+
+if CORE_NET_LIB_FEATURE_SUPPORT
+macclone_LDFLAGS += -lnet
+endif

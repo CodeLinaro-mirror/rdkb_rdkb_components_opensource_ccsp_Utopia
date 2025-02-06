@@ -30,6 +30,7 @@ protected:
         g_psmMock = new PsmMock();
         g_messagebusMock = new MessageBusMock();
         g_anscMemoryMock = new AnscMemoryMock();
+        g_libnetMock = new LibnetMock();
     }
 
     void TearDown() override {
@@ -42,6 +43,7 @@ protected:
         delete g_psmMock;
         delete g_messagebusMock;
         delete g_anscMemoryMock;
+        delete g_libnetMock;
 
 	g_utopiaMock=nullptr;
         g_utilMock=nullptr;
@@ -52,6 +54,7 @@ protected:
         g_psmMock=nullptr;
         g_messagebusMock=nullptr;
         g_anscMemoryMock=nullptr;
+        g_libnetMock=nullptr;
 
     }
 };
@@ -462,7 +465,7 @@ TEST_F(Service_ipv6TestFixture, TestLanAddr6Set_DividePrefixError)
                                         SetArgNPointeeTo<3>(active_insts, sizeof(active_insts)),
                                         ::testing::Return(0)
                         ));
-	 
+
         EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet_1-name"), _, _))
 		.Times(2)
                         .WillOnce(::testing::DoAll(
@@ -516,6 +519,201 @@ TEST_F(Service_ipv6TestFixture, TestLanAddr6Set_PrefixNotDivided)
         EXPECT_EQ(-1, lan_addr6_set(&si6));
 }
 
+TEST_F(Service_ipv6TestFixture, TestLanAddr6Set_NoActiveLanInterface_corenetlib)
+{
+    struct serv_ipv6 si6;
+    memset(&si6, 0, sizeof(si6));
+    si6.sefd = 1; 
+    si6.setok = 1; 
+	char buf[128]="brlan0";
+	char active_insts[32]="1";
+    char active_insts_buf1[32]= "0";
+	char iface_prefix[46]="2601:647:4b00:c9d0::";
+    char mockBuffer[] = "2601:647:4b00:c9d0::/64";
+    char mockKey1[] = "ipv6_brlan0-addr";
+    char mockKey2[] = "zebra-restart";
+    char mockValue1[] = "2601:647:4b00:c9d0";
+    char buffer[16]="brlan0",buffer1[16]="brlan0";
+    char val_buffer[64]="ready";
+
+    strcpy(si6.mso_prefix,"2601:647:4b00:c9d0::/64");
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_prefix-divided"), _, _))
+                        .WillOnce(::testing::DoAll(::testing::Return(0)
+                        ));
+	EXPECT_CALL(*g_syscfgMock, syscfg_get(_, StrEq("lan_pd_interfaces"), _, _))
+                        .WillRepeatedly(::testing::DoAll(
+                                        SetArgNPointeeTo<2>(buf, sizeof(buf)),
+                                        ::testing::Return(0)
+                        ));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet-instances"), _, _))
+                        .WillRepeatedly(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(active_insts, sizeof(active_insts)),
+                                        ::testing::Return(0)
+                        ));
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet_1-name"), _, _))
+                        .WillRepeatedly(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(buffer, sizeof(buffer)),
+					::testing::Return(0)));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_brlan0-prefix"),StrEq(iface_prefix), _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_subprefix-start"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_subprefix-end"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_prefix-length"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_pd-length"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_prefix-divided"),StrEq("ready"), _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_get( _, _, StrEq("ipv6_prefix-divided"), _, _))
+                .Times(1)
+	        .WillOnce(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(val_buffer, sizeof(val_buffer)),
+                                        ::testing::Return(0)));
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("ipv6_brlan0-prefix"), _, _))
+                                        .WillOnce(::testing::Return(0));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_linklocal"), StrEq("up"), _))
+                                        .WillOnce(::testing::Return(0));
+
+    EXPECT_CALL(*g_libnetMock, interface_up(testing::_))
+                                        .Times(testing::AtLeast(1))
+                                        .WillOnce(::testing::Return(CNL_STATUS_FAILURE));
+
+    EXPECT_CALL(*g_utopiaMock, sysctl_iface_set(_, StrEq("brlan0"), StrEq("1")))
+                                        .Times(AnyNumber())
+                                        .WillRepeatedly(::testing::Return(0));
+
+    EXPECT_CALL(*g_utopiaMock, sysctl_iface_set(_, StrEq("brlan0"), StrEq("0")))
+                                        .Times(AnyNumber())
+                                        .WillRepeatedly(::testing::Return(0));
+
+    EXPECT_CALL(*g_safecLibMock, _strcpy_s_chk(_, _, _, _)).Times(1)
+                                        .WillOnce(testing::DoAll(
+                                                  testing::SetArrayArgument<0>(mockBuffer, mockBuffer + strlen(mockBuffer) + 1),
+                                                  Return(EOK)
+                                        ));
+
+    EXPECT_CALL(*g_utopiaMock, iface_get_hwaddr(testing::_, testing::_, testing::_))
+                                        .Times(1)
+                                        .WillOnce(::testing::Return(0));
+
+    EXPECT_CALL(*g_safecLibMock, _strcat_s_chk(_, _, _, _))
+                                    .Times(AnyNumber())
+                                    .WillRepeatedly(Return(EOK));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq(mockKey1), StrEq(mockValue1), _))
+                    .WillOnce(Return(0));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq(mockKey2), nullptr, _))
+                    .WillOnce(Return(0));
+
+    EXPECT_CALL(*g_libnetMock, addr_add(testing::_))
+                    .Times(testing::AtLeast(1))
+                    .WillOnce(Return(CNL_STATUS_SUCCESS));
+
+    EXPECT_EQ(0, lan_addr6_set(&si6));
+}
+
+TEST_F(Service_ipv6TestFixture, TestLanAddr6Set_NoActiveLanInterface_corenetlib_failure)
+{
+    struct serv_ipv6 si6;
+	char buf[128]="brlan0",buf1[128]="\0";
+	char active_insts[32]="1";
+    char active_insts_buf1[32]= "0";
+	char iface_prefix[46]="2601:647:4b00:c9d0::";
+    char mockBuffer[] = "2601:647:4b00:c9d0::/64";
+    char mockKey1[] = "ipv6_brlan0-addr";
+    char mockValue1[] = "2601:647:4b00:c9d0";
+    char buffer[16]="brlan0",buffer1[16]="brlan0";
+    char val_buffer[64]="ready";
+    memset(&si6, 0, sizeof(si6));
+    si6.sefd = 1;
+    si6.setok = 1;
+    strcpy(si6.mso_prefix,"2601:647:4b00:c9d0::/64");
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_prefix-divided"), _, _))
+                        .WillOnce(::testing::DoAll(::testing::Return(0)
+                        ));
+	EXPECT_CALL(*g_syscfgMock, syscfg_get(_, StrEq("lan_pd_interfaces"), _, _))
+                        .WillRepeatedly(::testing::DoAll(
+                                        SetArgNPointeeTo<2>(buf, sizeof(buf)),
+                                        ::testing::Return(0)
+                        ));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet-instances"), _, _))
+                        .WillRepeatedly(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(active_insts, sizeof(active_insts)),
+                                        ::testing::Return(0)
+                        ));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet_1-name"), _, _))
+                        .WillRepeatedly(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(buffer, sizeof(buffer)),
+					::testing::Return(0)));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_brlan0-prefix"),StrEq(iface_prefix), _))
+                        .Times(1);
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_subprefix-start"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_subprefix-end"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_prefix-length"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_pd-length"), _, _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_prefix-divided"),StrEq("ready"), _))
+                        .Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_get( _, _, StrEq("ipv6_prefix-divided"), _, _))
+                .Times(1)
+	        .WillOnce(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(val_buffer, sizeof(val_buffer)),
+                                        ::testing::Return(0)));
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("ipv6_brlan0-prefix"), _, _))
+                                        .WillOnce(::testing::Return(0));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_linklocal"), StrEq("up"), _))
+                                        .WillOnce(::testing::Return(0));
+
+    EXPECT_CALL(*g_libnetMock, interface_up(testing::_))
+                                        .Times(testing::AtLeast(1))
+                                        .WillOnce(::testing::Return(CNL_STATUS_SUCCESS));
+
+    EXPECT_CALL(*g_utopiaMock, sysctl_iface_set(_, StrEq("brlan0"), StrEq("1")))
+                                        .Times(AnyNumber())
+                                        .WillRepeatedly(::testing::Return(0));
+
+    EXPECT_CALL(*g_utopiaMock, sysctl_iface_set(_, StrEq("brlan0"), StrEq("0")))
+                                        .Times(AnyNumber())
+                                        .WillRepeatedly(::testing::Return(0));
+
+    EXPECT_CALL(*g_safecLibMock, _strcpy_s_chk(_, _, _, _)).Times(1)
+                                        .WillOnce(testing::DoAll(
+                                                  testing::SetArrayArgument<0>(mockBuffer, mockBuffer + strlen(mockBuffer) + 1),
+                                                  Return(EOK)
+                                        ));
+
+    EXPECT_CALL(*g_utopiaMock, iface_get_hwaddr(testing::_, testing::_, testing::_))
+                                        .Times(1)
+                                        .WillOnce(::testing::Return(0));
+
+    EXPECT_CALL(*g_safecLibMock, _strcat_s_chk(_, _, _, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(EOK));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq(mockKey1), StrEq(mockValue1), _))
+       .WillOnce(Return(0));
+
+    EXPECT_CALL(*g_libnetMock, addr_add(testing::_))
+       .Times(testing::AtLeast(1))
+       .WillOnce(Return(CNL_STATUS_FAILURE));
+
+    EXPECT_EQ(-1, lan_addr6_set(&si6));
+}
 
 
 TEST_F(Service_ipv6TestFixture, PositiveCaseLanAddr6Unset) {
@@ -568,6 +766,67 @@ EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet_1-name"), _, _))
     EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_linklocal"), StrEq("down"), _))
         .Times(1)
         .WillOnce(Return(0));
+    EXPECT_CALL(*g_libnetMock, addr_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_SUCCESS));
+
+    EXPECT_EQ(0, lan_addr6_unset(&si6));
+
+}
+
+TEST_F(Service_ipv6TestFixture, PositiveCaseLanAddr6Unset_addr_delete_failure) {
+    struct serv_ipv6 si6;
+    si6.sefd = 1;
+    si6.setok = 1;
+
+    unsigned int l2_insts[MAX_LAN_IF_NUM] = {1, 2};
+    char if_name[128] = "brlan0";
+    char buffer[16]="brlan0";
+    char iface_prefix[INET6_ADDRSTRLEN] = "2601:647:4b00:c9d0::/64";
+    char iface_addr[INET6_ADDRSTRLEN] = "2601:647:4b00:c9d0::1";
+    char evt_name[64] = "ipv6_brlan0-prefix";
+    int prefix_len = 64;
+    char active_instances[64] = "1";
+
+
+    EXPECT_CALL(*g_syscfgMock, syscfg_get(_, StrEq("lan_pd_interfaces"), _, _))
+		.Times(1)
+        .WillOnce(::testing::DoAll(SetArgNPointeeTo<2>(if_name, sizeof(if_name)),
+		    ::testing::Return(0)));
+EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet-instances"), _, _))
+        .Times(1)
+		.WillOnce(::testing::DoAll(SetArgNPointeeTo<3>(active_instances, sizeof(active_instances)),
+				            ::testing::Return(0)));
+
+
+EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet_1-name"), _, _))
+		.Times(2)
+                 .WillOnce(::testing::DoAll(
+                 			SetArgNPointeeTo<3>(buffer, sizeof(buffer)),
+					::testing::Return(0)))
+		.WillOnce(::testing::DoAll(
+                                        SetArgNPointeeTo<3>(buffer, sizeof(buffer)),
+					::testing::Return(0)));
+
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("ipv6_brlan0-prefix"), _, _))
+        .Times(1)
+        .WillOnce(testing::DoAll(SetArgNPointeeTo<3>(iface_prefix,sizeof(iface_prefix)),
+                                ::testing::Return(0)));
+
+
+    EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("ipv6_brlan0-addr"), _, _))
+        .Times(1)
+        .WillOnce(testing::DoAll(SetArgNPointeeTo<3>(iface_addr,sizeof(iface_addr)),
+				::testing:: Return(0)));
+
+     EXPECT_CALL(*g_utopiaMock, sysctl_iface_set(_, _ , _))
+		.Times(1);
+    EXPECT_CALL(*g_syseventMock, sysevent_set(_, _, StrEq("ipv6_linklocal"), StrEq("down"), _))
+        .Times(1)
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_libnetMock, addr_delete(testing::_))
+        .Times(testing::AtLeast(1))
+        .WillOnce(Return(CNL_STATUS_FAILURE));
 
     EXPECT_EQ(0, lan_addr6_unset(&si6));
 
@@ -608,9 +867,9 @@ TEST_F(Service_ipv6TestFixture, EmptyActiveInstances) {
 		.Times(1)
         .WillOnce(::testing::DoAll(SetArgNPointeeTo<2>(if_name, sizeof(if_name)),
 		    ::testing::Return(0)));
-	
+
     EXPECT_CALL(*g_syseventMock, sysevent_get(_, _, StrEq("multinet-instances"), _, _))
-        .Times(1)        
+        .Times(1)
 		.WillOnce(::testing::DoAll(SetArgNPointeeTo<3>(active_instances, sizeof(active_instances)),
 				            ::testing::Return(0)));
 
@@ -893,7 +1152,7 @@ TEST_F(Service_ipv6TestFixture, PositiveCaseServIpv6Init) {
 
     EXPECT_CALL(*g_anscMemoryMock,Ansc_FreeMemory_Callback( _))
     .Times(1)
-    
+
     EXPECT_CALL(*g_anscMemoryMock,AnscFreeMemoryOrig( _))
     .Times(1)
 

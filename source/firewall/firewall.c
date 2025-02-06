@@ -537,6 +537,12 @@ void logPrintMain(char* filename, int line, char *fmt,...);
 #define kOID_cmRemoteIpv6Address  "1.3.6.1.4.1.4413.2.2.2.1.2.12161.1.3.2.0"
 #endif
 
+//core net lib
+#include <stdint.h>
+#ifdef CORE_NET_LIB
+#include <libnet.h>
+#endif
+
 static int do_blockfragippktsv4(FILE *fp);
 static int do_ipflooddetectv4(FILE *fp);
 static int do_portscanprotectv4(FILE *fp);
@@ -2391,7 +2397,7 @@ static int prepare_globals_from_configuration(void)
    lan0_ipaddr[0] = '\0';
    sysevent_get(sysevent_fd, sysevent_token, "lan0_ipaddr", lan0_ipaddr, sizeof(lan0_ipaddr));
 #endif
-   
+
 #ifdef _HUB4_PRODUCT_REQ_
    isProdImage = bIsProductionImage(); 
 #endif
@@ -2513,15 +2519,44 @@ static int prepare_globals_from_configuration(void)
    sysevent_get(sysevent_fd, sysevent_token, "tr_erouter0_dhcpv6_client_v6addr", current_wan_ip6_addr, sizeof(current_wan_ip6_addr));
 
    if ( ('\0' == current_wan_ip6_addr[0] ) && ( 0 == strlen(current_wan_ip6_addr) ) ) {
-
+#ifndef CORE_NET_LIB
         FILE *ipAddrFp = NULL;
+#endif
 #ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
 	char wanInterface[BUFLEN_64] = {'\0'};
 	wanmgr_get_wan_interface(wanInterface);
+#ifdef CORE_NET_LIB
+        libnet_status ret;
+        ret = get_ipv6_address(wanInterface, current_wan_ip6_addr, sizeof(current_wan_ip6_addr));
+        if (ret == CNL_STATUS_SUCCESS) {
+            FIREWALL_DEBUG("Successfully retrived global IPv6 address for %s\n" COMMA wanInterface);
+	    current_wan_ip6_addr[sizeof(current_wan_ip6_addr) - 1] = '\0';
+	}
+       	else {
+            FIREWALL_DEBUG("Failed to retrieve global IPv6 address for %s\n" COMMA wanInterface);
+	    current_wan_ip6_addr[0] = '\0';
+	}
+#else
 	ipAddrFp = v_secure_popen("r","ifconfig %s | grep Global |  awk '/inet6/{print $3}' | cut -d '/' -f1", wanInterface);
+#endif
+#else
+#ifdef CORE_NET_LIB
+	char interface_ipv6[BUFLEN_64] = "erouter0";
+        libnet_status stat;
+      	stat = get_ipv6_address(interface_ipv6, current_wan_ip6_addr, sizeof(current_wan_ip6_addr));
+        if (stat == CNL_STATUS_SUCCESS) {
+            FIREWALL_DEBUG("Successfully retrived IPv6 address for erouter0\n");
+	    current_wan_ip6_addr[sizeof(current_wan_ip6_addr) - 1] = '\0';
+        }
+        else {
+            FIREWALL_DEBUG("Failed to retrieve global IPv6 address for erouter0\n");
+	    current_wan_ip6_addr[0] = '\0';
+        }
 #else
         ipAddrFp = v_secure_popen("r","ifconfig erouter0 | grep Global |  awk '/inet6/{print $3}' | cut -d '/' -f1");
 #endif
+#endif
+#ifndef CORE_NET_LIB
 	if (ipAddrFp != NULL )
         {
             if(fgets(current_wan_ip6_addr, sizeof(current_wan_ip6_addr), ipAddrFp)!=NULL)
@@ -2536,7 +2571,7 @@ static int prepare_globals_from_configuration(void)
             v_secure_pclose(ipAddrFp);
             ipAddrFp = NULL;
           }
-
+#endif
     } 
 
    get_ip6address(ecm_wan_ifname, ecm_wan_ipv6, &ecm_wan_ipv6_num,IPV6_ADDR_SCOPE_GLOBAL);
@@ -16471,6 +16506,27 @@ void RmConntrackEntry(char *IPaddr)
 }
 int CleanIPConntrack(char *physAddress)
 {
+#ifdef CORE_NET_LIB
+    struct neighbour_info neigh_data;
+    libnet_status status;
+    char output[INET_ADDRSTRLEN] = {0};
+    status = neighbour_get_list(&neigh_data);
+    if (status != CNL_STATUS_SUCCESS) {
+        FIREWALL_DEBUG("Failed to list neighbours for %s\n" COMMA physAddress);
+        return -1;
+    }
+    FIREWALL_DEBUG("Successfully listed neighbours for %s\n" COMMA physAddress);
+    for (int i = 0; i < neigh_data.neigh_count; i++) {
+        if (strcasecmp(neigh_data.neigh_arr[i].mac, physAddress) == 0) {
+            snprintf(output, sizeof(output), "%s", neigh_data.neigh_arr[i].local);
+            printf("Output: neighbour list %s\n",output);
+       	    if (!strstr(output, "fe80:")) {
+               RmConntrackEntry(output);
+               }
+        }
+    }
+    neighbour_free_neigh(&neigh_data);
+#else
     FILE *fp = NULL;
     char output[50] = {0};
     memset(output,0,50);
@@ -16490,6 +16546,7 @@ int CleanIPConntrack(char *physAddress)
    		 RmConntrackEntry(output);
     }
     v_secure_pclose(fp);
+#endif
     return 0;
 }
 int IsFileExists(const char *fname)

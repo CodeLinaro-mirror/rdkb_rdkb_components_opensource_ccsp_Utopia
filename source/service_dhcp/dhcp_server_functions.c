@@ -42,6 +42,12 @@
 #define STATIC static
 #endif
 
+//core net lib
+#include <stdint.h>
+#ifdef CORE_NET_LIB
+#include <libnet.h>
+#endif
+
 #define HOSTS_FILE              "/etc/hosts"
 #define HOSTNAME_FILE           "/etc/hostname"
 #define DHCP_STATIC_HOSTS_FILE  "/etc/dhcp_static_hosts"
@@ -76,7 +82,7 @@
 #define isValidSubnetByte(byte) (((byte == 255) || (byte == 254) || (byte == 252) || \
                                   (byte == 248) || (byte == 240) || (byte == 224) || \
                                   (byte == 192) || (byte == 128)) ? 1 : 0)
-                                  
+
 extern int g_iSyseventfd;
 extern token_t g_tSysevent_token;
 extern char g_cDhcp_Lease_Time[8];
@@ -1022,7 +1028,18 @@ int prepare_dhcp_conf (char *input)
                 Ansc_FreeMemory_Callback(psmStrValue);
                 psmStrValue = NULL;
         }
-        v_secure_system("ip addr add "GRE_VLAN_IFACE_IP"/24 dev %s", mesh_wan_ifname);
+
+#ifdef CORE_NET_LIB
+        libnet_status status = addr_add_va_arg("-4 %s/24 dev %s", GRE_VLAN_IFACE_IP, mesh_wan_ifname);
+	if (status == CNL_STATUS_SUCCESS) {
+            fprintf(g_fArmConsoleLog, "Successfully added IP address %s to interface %s\n", GRE_VLAN_IFACE_IP, mesh_wan_ifname);    
+        } 
+        else {
+            fprintf(g_fArmConsoleLog, "Failed to add IP address %s to interface %s\n", GRE_VLAN_IFACE_IP, mesh_wan_ifname);
+        }
+#else
+	v_secure_system("ip addr add "GRE_VLAN_IFACE_IP"/24 dev %s", mesh_wan_ifname);
+#endif
         
         // edit the config file
         fprintf(l_fLocal_Dhcp_ConfFile, "#We want dnsmasq to read /var/tmp/lte_resolv.conf \n");

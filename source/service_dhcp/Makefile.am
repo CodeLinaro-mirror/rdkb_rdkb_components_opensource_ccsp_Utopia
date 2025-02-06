@@ -39,3 +39,6 @@ service_dhcp_LDADD = $(top_builddir)/source/util/utils/libutopiautil.la \
                      $(top_builddir)/source/util/print_uptime/libprint_uptime.la \
                      -ltelemetry_msgsender \
                      -lnet
+if CORE_NET_LIB_FEATURE_SUPPORT
+service_dhcp_LDFLAGS += -lnet
+endif

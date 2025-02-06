@@ -69,6 +69,12 @@
 #define DHCPV6S_CONF_FILE           "/tmp/dibbler/server.conf"
 #endif
 
+//core net lib
+#include <stdint.h>
+#ifdef CORE_NET_LIB
+#include <libnet.h>
+#endif
+
 #if defined(INTEL_PUMA7) || defined(MULTILAN_FEATURE) || defined(_HUB4_PRODUCT_REQ_)
 #define CCSP_SUBSYS                 "eRT."
 #define L3_DM_PREFIX                "dmsb.l3net."
@@ -1135,7 +1141,10 @@ STATIC void update_mtu(void){
     int primary_l3_instance = 0;
     char bridge_mode_string[BRIDGE_MODE_STRLEN]={0};
     int bridge_mode = 0;
-
+#ifdef CORE_NET_LIB
+    libnet_status status;
+    char mtu_str[16] = {0};
+#endif
     /* Get primary L3 network instance */
     snprintf(psm_param, sizeof(psm_param), "%s", L3_DM_PRIMARY_INSTANCE);
     instance_ret = PSM_VALUE_GET_STRING(psm_param, primary_l3_instance_string);
@@ -1188,10 +1197,33 @@ STATIC void update_mtu(void){
                 ) {
                 /* Apply the MTU setting if there was a valid MTU value in DML */
                 mtu_val = atoi(mtu_string);
-                if (0 != mtu_val)
-                    /* Setting MTU value to same as current MTU has no effect in Linux so set it twice to force it to apply */
+                if (0 != mtu_val) {
+		   /* Setting MTU value to same as current MTU has no effect in Linux so set it twice to force it to apply */
+#ifdef CORE_NET_LIB
+                    snprintf(mtu_str, sizeof(mtu_str), "%d", mtu_val - 1);
+		    status = interface_set_mtu(name_string, mtu_str);
+                    if (status == CNL_STATUS_SUCCESS) {
+                      fprintf(stderr, "Successfully set MTU %d for interface %s\n", mtu_val - 1, name_string);
+                    }
+                    else {
+                      fprintf(stderr, "Failed to set MTU %d for interface %s\n", mtu_val - 1, name_string);
+                    }
+#else
                     v_secure_system("ip link set dev %s mtu %d", name_string, (mtu_val - 1));
-                    v_secure_system("ip link set dev %s mtu %d", name_string, mtu_val);
+#endif
+		}
+#ifdef CORE_NET_LIB
+                    snprintf(mtu_str, sizeof(mtu_str), "%d", mtu_val);
+                    status = interface_set_mtu(name_string, mtu_str);
+                    if (status == CNL_STATUS_SUCCESS) {
+                      fprintf(stderr, "Successfully set MTU %d for interface %s\n", mtu_val, name_string);
+                    }
+                    else {
+                      fprintf(stderr, "Failed to set MTU %d for interface %s\n", mtu_val, name_string);
+                    }
+#else
+	    	    v_secure_system("ip link set dev %s mtu %d", name_string, mtu_val);
+#endif
             }
 
             /* Free the memory used to fetch the L3 values */
@@ -1256,6 +1288,10 @@ STATIC int lan_addr6_set(struct serv_ipv6 *si6)
 #if defined(MULTILAN_FEATURE)
     char bridge_mode[BRIDGE_MODE_STRLEN]={0};
 #endif
+
+#ifdef CORE_NET_LIB
+    libnet_status status;
+#endif
    
     /*
      * divide the Operator-delegated prefix to sub-prefixes
@@ -1293,8 +1329,18 @@ STATIC int lan_addr6_set(struct serv_ipv6 *si6)
         snprintf(evt_name, sizeof(evt_name), "ipv6_%s-prefix", iface_name);
         sysevent_get(si6->sefd, si6->setok, evt_name, iface_prefix, sizeof(iface_prefix));
 
-        /*enable ipv6 link local*/
+	 /*enable ipv6 link local*/
+#ifdef CORE_NET_LIB
+	status = interface_up(iface_name);
+        if(status == CNL_STATUS_SUCCESS) {
+          fprintf(stderr, "Successfully brought up interface %s\n", iface_name);
+        }
+        else{
+          fprintf(stderr, "Failed to bring up interface %s\n", iface_name);
+        }
+#else
         v_secure_system("ip -6 link set dev %s up", iface_name);
+#endif
         sysctl_iface_set("/proc/sys/net/ipv6/conf/%s/autoconf", iface_name, "1");
 #ifndef MULTILAN_FEATURE
         sysctl_iface_set("/proc/sys/net/ipv6/conf/%s/disable_ipv6", iface_name, "1");
@@ -1357,17 +1403,38 @@ STATIC int lan_addr6_set(struct serv_ipv6 *si6)
         v_secure_system("ip -6 addr change %s/%d dev %s valid_lft %s preferred_lft %s",
                 ipv6_addr, prefix_len, iface_name, iapd_vldtm, iapd_preftm);
 #else
+#ifdef CORE_NET_LIB
+        status = addr_add_va_arg("-6 %s/%d dev %s inet6 valid_lft %s preferred_lft %s",ipv6_addr, prefix_len, iface_name, iapd_vldtm, iapd_preftm);
+        if (status == CNL_STATUS_SUCCESS) {
+            fprintf(stderr, "Successfully added IPv6 address %s/%d to interface %s with valid_lft %s and preferred_lft %s\n",ipv6_addr, prefix_len, iface_name, iapd_vldtm, iapd_preftm);
+        }
+        else {
+            fprintf(stderr, "Failed to add IPv6 address %s/%d to interface %s with valid_lft %s and preferred_lft %s\n",ipv6_addr, prefix_len, iface_name, iapd_vldtm, iapd_preftm);
+        }
+#else
         v_secure_system("ip -6 addr add %s/%d dev %s valid_lft %s preferred_lft %s",
                 ipv6_addr, prefix_len, iface_name, iapd_vldtm, iapd_preftm);
 #endif
+#endif
 
         bzero(ipv6_addr, sizeof(ipv6_addr));
+#else
+#ifdef CORE_NET_LIB
+        status = addr_add_va_arg("-6 %s/%d dev %s inet6 valid_lft forever preferred_lft forever",ipv6_addr, prefix_len, iface_name);
+	if(status != CNL_STATUS_SUCCESS) {
+           fprintf(stderr, "Failed to add IPv6 address %s/%d to interface %s with valid_lft forever and preferred_lft forever\n",ipv6_addr, prefix_len, iface_name);
+           return -1;
+        }
+        else {
+           fprintf(stderr, "Successfully added IPv6 address %s/%d to interface %s with valid_lft forever and preferred_lft forever\n",ipv6_addr, prefix_len, iface_name);
+        }
 #else
         if (v_secure_system("ip -6 addr add %s/%d dev %s valid_lft forever preferred_lft forever", 
                     ipv6_addr, prefix_len, iface_name) != 0) {
             fprintf(stderr, "%s set ipv6 addr error.\n", iface_name);
             return -1;
-        }
+	}
+#endif
 #endif
     }
 
@@ -1383,6 +1450,9 @@ STATIC int lan_addr6_unset(struct serv_ipv6 *si6)
     unsigned int l2_insts[MAX_LAN_IF_NUM] = {0};
     char if_name[16] = {0};
     char iface_prefix[INET6_ADDRSTRLEN] = {0};
+#ifdef CORE_NET_LIB
+    libnet_status status;
+#endif
 #if defined (_PROPOSED_BUG_FIX_)
     char old_iface_prefix[INET6_ADDRSTRLEN] = {0};
     char default_lan_ifname[16] = {0};
@@ -1453,7 +1523,17 @@ STATIC int lan_addr6_unset(struct serv_ipv6 *si6)
         if (iface_addr[0] != '\0') {
 #endif
             get_prefix_info(iface_prefix, NULL, 0, &prefix_len);
-            v_secure_system("ip -6 addr del %s/%d dev %s", iface_addr, prefix_len, if_name);
+#ifdef CORE_NET_LIB
+            status = addr_delete_va_arg("-6 %s/%d dev %s", iface_addr, prefix_len, if_name);;
+	    if(status != CNL_STATUS_SUCCESS) {
+               fprintf(stderr, "Failed to delete IPv6 address %s/%d in interface %s \n",iface_addr, prefix_len, if_name);
+            }
+            else {
+               fprintf(stderr, "Successfully deleted IPv6 address %s/%d in interface %s\n",iface_addr, prefix_len, if_name);
+            }
+#else
+	    v_secure_system("ip -6 addr del %s/%d dev %s", iface_addr, prefix_len, if_name);
+#endif
         }
 #ifdef MULTILAN_FEATURE
         sysevent_set(si6->sefd, si6->setok, evt_name, "", 0);

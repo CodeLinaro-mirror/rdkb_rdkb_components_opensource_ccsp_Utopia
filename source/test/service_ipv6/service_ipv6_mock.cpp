@@ -27,4 +27,5 @@ utopiaMock* g_utopiaMock = NULL;
 PsmMock * g_psmMock = NULL;
 MessageBusMock * g_messagebusMock=NULL;
 AnscMemoryMock * g_anscMemoryMock=NULL;
+LibnetMock *g_libnetMock = NULL;
 

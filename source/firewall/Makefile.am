@@ -39,3 +39,7 @@ firewall_LDADD = $(top_builddir)/source/syscfg/lib/libsyscfg.la \
 nfq_handler_LDADD = $(top_builddir)/source/syscfg/lib/libsyscfg.la \
                     $(top_builddir)/source/sysevent/lib/libsysevent.la \
                     $(top_builddir)/source/ulog/libulog.la
+
+if CORE_NET_LIB_FEATURE_SUPPORT
+AM_LDFLAGS += -lnet
+endif
