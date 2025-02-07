@@ -1179,6 +1179,10 @@ static int ApplyPartnersObjectItemsIntoSysevents( char *pcPartnerID )
                {
                   sysevent_set (global_fd, global_id, "UseCEDMPasswordForGUI", value, 0);
                }
+               else if ( 0 == strcmp ( key, "Device.X_RDK_Features.HotSpotSupport.Enable") )
+               {
+                  sysevent_set (global_fd, global_id, "HotSpotSupport", value, 0);
+               }
 
                pCJsonChildParam = pCJsonChildParam->next;
             }
