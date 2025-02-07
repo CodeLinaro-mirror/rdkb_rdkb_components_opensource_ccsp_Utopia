@@ -2625,7 +2625,7 @@ static int prepare_globals_from_configuration(void)
        {
        rc = PSM_VALUE_GET_STRING(PSM_NAME_TRUE_STATIC_IP_ENABLE, pStr);
        if(rc == CCSP_SUCCESS && pStr != NULL){
-          if(strcmp("1", pStr) == 0){
+          if((strcmp("TRUE", pStr) == 0) || (strcmp("1", pStr) == 0)){
               isWanStaticIPReady = 1;
           }
           Ansc_FreeMemory_Callback(pStr);
