@@ -1129,7 +1129,7 @@ fi
    fi
    
    # For boot itme optimization, run do_extra_pool only when brlan1 interface is available
-   isBrlan1=`ifconfig | grep brlan1`
+   isBrlan1=`ifconfig | grep -w brlan1`
    if [ -n "$isBrlan1" ]
    then
       echo_t "DHCP_SERVER : brlan1 availble, creating dnsmasq entry "
