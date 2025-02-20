@@ -1371,6 +1371,16 @@ STATIC void addInSysCfgdDB (char *key, char *value)
    }
 #endif
 
+#if defined (_WNXL11BWL_PRODUCT_REQ_) 
+   if ( 0 == strcmp ( key, "Device.Time.NTPServer1") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "ntp_server1" ) )
+      {
+         set_syscfg_partner_values( value,"ntp_server1" );
+      }
+   }
+#endif
+
    #ifdef MTA_TR104SUPPORT
    if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.TR104.Enable") )
    {
