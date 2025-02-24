@@ -200,6 +200,7 @@ PSM_TMP_XML_CONFIG_FILE_NAME="$SYSCFG_MOUNT/bbhm_tmp_cfg.xml"
 HOTSPOT_BLOB="/nvram/hotspot_blob"
 HOTSPOT_JSON="/nvram/hotspot.json"
 MWO_PATH="/nvram/mwo"
+CHANNEL_KEEPOUT_PATH="/nvram/mesh"
 
 CheckAndReCreateDB()
 {
@@ -303,6 +304,9 @@ fi
    fi
    if [ -f /nvram/device_profile.json ]; then
       rm -f /nvram/device_profile.json
+   fi
+   if [ -e "$CHANNEL_KEEPOUT_PATH" ]; then
+      rm -rf $CHANNEL_KEEPOUT_PATH
    fi
    rm -f /nvram/partners_defaults.json
    rm -f /nvram/bootstrap.json
