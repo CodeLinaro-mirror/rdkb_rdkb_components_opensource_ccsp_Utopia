@@ -793,3 +793,7 @@ if [ "$BOX_TYPE" = "VNTXER5" ]; then
       fi
    fi
 fi
+
+if [ "$BOX_TYPE" = "SCER11BEL" ]; then
+       /etc/reset_reason_log.sh &
+fi
