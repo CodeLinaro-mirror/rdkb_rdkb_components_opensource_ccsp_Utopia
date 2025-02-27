@@ -1320,13 +1320,14 @@ int do_mapt_rules_v4(FILE *nat_fp, FILE *filter_fp, FILE *mangle_fp)
 #endif
 
 #if defined(NAT46_KERNEL_SUPPORT)
-#if defined(_SR213_PRODUCT_REQ_) /* HUB6 MAPT Not connected MQTT broker. */
-    fprintf(mangle_fp, "-A POSTROUTING -p tcp --tcp-flags SYN,RST SYN -o %s -j TCPMSS --set-mss %d"
+/* UK MAPT Not connected MQTT broker. */
+    if (strcmp ( devicePartnerId, "sky-uk") == 0) {
+        fprintf(mangle_fp, "-A POSTROUTING -p tcp --tcp-flags SYN,RST SYN -o %s -j TCPMSS --set-mss %d"
                        "\n", NAT46_INTERFACE, NAT46_CLAMP_MSS);
-#else
-    // TCP MSS RULE - SKYH4-5123 - To improve IPv4 Downstream traffic performance
-    fprintf(mangle_fp, "-A FORWARD -p tcp --tcp-flags SYN,RST SYN -o %s -j TCPMSS --set-mss %d\n", NAT46_INTERFACE, NAT46_CLAMP_MSS);
-#endif /* _SR213_PRODUCT_REQ_ */
+    }else {
+        // TCP MSS RULE - SKYH4-5123 - To improve IPv4 Downstream traffic performance
+        fprintf(mangle_fp, "-A FORWARD -p tcp --tcp-flags SYN,RST SYN -o %s -j TCPMSS --set-mss %d\n", NAT46_INTERFACE, NAT46_CLAMP_MSS);
+    }
 #elif defined (FEATURE_SUPPORT_MAPT_NAT46)
     // RDKB-40515 - [MAP-T] Gw to NOC connectivity failure
     fprintf(mangle_fp, "-A POSTROUTING -p tcp --tcp-flags SYN,RST SYN -o %s -j TCPMSS --set-mss %d"
