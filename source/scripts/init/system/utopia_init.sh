@@ -385,7 +385,9 @@ fi
 
      touch /nvram/.apply_partner_defaults   
    #>>zqiu
-   create_wifi_default
+   if declare -f create_wifi_default > /dev/null 2>&1; then
+      create_wifi_default
+   fi
    #<<zqiu
    if [ "$ENCRYPT_SYSCFG" = false ] ; then
       echo_t "[utopia][init] Retarting syscfg using file store ($SYSCFG_BKUP_FILE)"
@@ -412,7 +414,9 @@ fi
 
 elif [ "$FACTORY_RESET_WIFI" = "$SYSCFG_FR_VAL" ]; then
     echo_t "[utopia][init] Performing wifi reset"
-    create_wifi_default
+    if declare -f create_wifi_default > /dev/null 2>&1; then
+        create_wifi_default
+    fi
     syscfg unset $FACTORY_RESET_KEY
 #<<zqiu
 fi
