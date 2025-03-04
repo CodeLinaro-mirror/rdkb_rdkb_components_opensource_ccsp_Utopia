@@ -647,14 +647,6 @@ enum{
 static void wanmgr_get_wan_interface(char *wanInterface);
 #endif
 
-#if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
-#define SYSEVENT_VOICE_IPV6_PROXYLIST "voice_ipv6_outbound_proxy_addresses"
-#define SYSEVENT_VOICE_IPV6_RTPLIST "voice_ipv6_rtp_pinholes"
-#define SYSEVENT_VOICE_IPV6_ETHERNETPRIORITY "voice_ipv6_ethernetpriority"
-#define SYSEVENT_VOICE_IPV6_DSCP "voice_ipv6_dscp"
-static int do_telcovoice_rules_v6(FILE *filter_fp, FILE *mangle_fp);
-#endif
-
 /*
  * Service event mapping table
  */
@@ -2597,7 +2589,12 @@ static int prepare_globals_from_configuration(void)
    isWanReady        = (0 == strcmp("0.0.0.0", current_wan_ipaddr)) ? 0 : 1;
 #endif //FEATURE_MAPT
 #else //_HUB4_PRODUCT_REQ_ ENDS
-   isWanReady        = (0 == strcmp("0.0.0.0", current_wan_ipaddr)) ? 0 : 1;
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      isWanReady        = (0 == strcmp("0.0.0.0", current_wan_ipaddr)) ? 0 : 1;
+   }
 #endif // NON _HUB4_PRODUCT_REQ_
    //isBridgeMode        = (0 == strcmp("1", bridge_mode)) ? 1 : (0 == strcmp("1", byoi_bridge_mode)) ? 1 : 0;
    isBridgeMode        = (0 == strcmp("0", bridge_mode)) ? 0 : 1;
@@ -8374,7 +8371,12 @@ void block_url_by_ipaddr(FILE *fp, char *url, char *dropLog, int ipver, char *in
 
 /* * Actually needs to get IP address of every firewall-restart iteration otherwise blocking wont work properly */
 #if !defined(_HUB4_PRODUCT_REQ_)
-    ipRecords = fopen(filePath, "r");
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
+      ipRecords = fopen(filePath, "r");
+   }
 #endif /* * _HUB4_PRODUCT_REQ_ */
 
     if(ipRecords == NULL) {
@@ -9337,15 +9339,25 @@ static int do_parcon_mgmt_site_keywd(FILE *fp, FILE *nat_fp, int iptype, FILE *c
                 // consider the case that user input whole url.
                 if(strstr(query, "://") != 0) {
                     fprintf(fp, "-A lan2wan_pc_site -m string --string \"%s\" --algo kmp --icase -j %s\n", strstr(query, "://") + 3, drop_log);
-#ifdef _HUB4_PRODUCT_REQ_
-                    //In Hub4 keyword blocking feature is not working with FORWARD chain rules as CPE (dnsmasq) acts as DNS Proxy.
-                    //Add rules in INPUT chain to resolve this issue.
-                    fprintf(fp, "-I INPUT -i %s -j lan2wan_pc_site \n", lan_ifname);
+#if defined(_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+                     if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+                     {
+                        //In Hub4 keyword blocking feature is not working with FORWARD chain rules as CPE (dnsmasq) acts as DNS Proxy.
+                        //Add rules in INPUT chain to resolve this issue.
+                        fprintf(fp, "-I INPUT -i %s -j lan2wan_pc_site \n", lan_ifname);
+                     }
 #endif
                 } else {
                     fprintf(fp, "-A lan2wan_pc_site -m string --string \"%s\" --algo kmp --icase -j %s\n", query, drop_log);
-#ifdef _HUB4_PRODUCT_REQ_
-                    fprintf(fp, "-I INPUT -i %s -j lan2wan_pc_site \n", lan_ifname);
+#if defined(_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+                     if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+                     {
+                        fprintf(fp, "-I INPUT -i %s -j lan2wan_pc_site \n", lan_ifname);
+                     }
 #endif
                 }
             }
@@ -10410,16 +10422,21 @@ static int do_wan2lan_disabled(FILE *fp)
 #endif //FEATURE_MAPT
 
 #ifndef _HUB4_PRODUCT_REQ_
-   /*
-    * if the wan is currently unavailable, then drop any packets from wan to lan
-    */
-   if (!isNatReady ) {
-      fprintf(fp, "-A wan2lan_disabled -i %s -d %s/%s -j DROP\n", current_wan_ifname, lan_ipaddr, lan_netmask);
-
-#if defined (MULTILAN_FEATURE)
-      do_multinet_wan2lan_disable(fp);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
 #endif
+   {
+      /*
+      * if the wan is currently unavailable, then drop any packets from wan to lan
+      */
+      if (!isNatReady ) {
+         fprintf(fp, "-A wan2lan_disabled -i %s -d %s/%s -j DROP\n", current_wan_ifname, lan_ipaddr, lan_netmask);
 
+   #if defined (MULTILAN_FEATURE)
+         do_multinet_wan2lan_disable(fp);
+   #endif
+
+      }
    }
 #endif
    FIREWALL_DEBUG("Exiting do_wan2lan_disabled\n"); 
@@ -10807,7 +10824,12 @@ static void prepare_ipc_filter(FILE *filter_fp) {
 #endif
 
 #if (defined (_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_PLATFORM_BANANAPI_R4_)) && !defined(_HUB4_PRODUCT_REQ_)
-   fprintf(filter_fp, "-I INPUT -i %s -j ACCEPT\n", "privbr");
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      fprintf(filter_fp, "-I INPUT -i %s -j ACCEPT\n", "privbr");
+   }
 #endif
 
                 FIREWALL_DEBUG("Exiting prepare_ipc_filter\n"); 	  
@@ -11145,6 +11167,10 @@ static int prepare_multinet_filter_forward (FILE *filter_fp)
         
 //         fprintf(filter_fp, "-I INPUT -i %s -d %s -j ACCEPT\n", net_resp, net_ip);
 #if !defined(_HUB4_PRODUCT_REQ_) /* Rules for pod interface */
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
         fprintf(filter_fp, "-A INPUT -i %s -d %s -j ACCEPT\n", net_resp, ip);
         fprintf(filter_fp, "-A INPUT -i %s -m pkttype ! --pkt-type unicast -j ACCEPT\n", net_resp);
 #ifdef MULTILAN_FEATURE
@@ -11156,14 +11182,20 @@ static int prepare_multinet_filter_forward (FILE *filter_fp)
         fprintf(filter_fp, "-A FORWARD -i %s -o %s -j ACCEPT\n", net_resp, current_wan_ifname);
         fprintf(filter_fp, "-A FORWARD -i %s -o %s -j ACCEPT\n", current_wan_ifname, net_resp);
 #endif /*MULTILAN_FEATURE*/
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
         //fprintf(filter_fp, "-A OUTPUT -o %s -j ACCEPT\n", net_resp);
 
 #if defined (INTEL_PUMA7) || ((defined (_COSA_BCM_ARM_) || defined (_PLATFORM_TURRIS_) || defined(_PLATFORM_BANANAPI_R4_) || defined(_COSA_QCA_ARM_)) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_))
-        if ( 0 != strncmp( lan_ifname, net_resp, strlen(lan_ifname))) { // block forwarding between bridge
-        	fprintf(filter_fp, "-A FORWARD -i %s -o %s -j DROP\n", lan_ifname, net_resp);
-        	fprintf(filter_fp, "-A FORWARD -i %s -o %s -j DROP\n", net_resp, lan_ifname);
-        }
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      if ( 0 != strncmp( lan_ifname, net_resp, strlen(lan_ifname))) { // block forwarding between bridge
+      fprintf(filter_fp, "-A FORWARD -i %s -o %s -j DROP\n", lan_ifname, net_resp);
+      fprintf(filter_fp, "-A FORWARD -i %s -o %s -j DROP\n", net_resp, lan_ifname);
+      }
+   }
 #endif
         
     } while ((tok = strtok(NULL, " ")) != NULL);
@@ -12171,10 +12203,15 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
 #endif // FEATURE_MAPT
 
 #if !defined(FEATURE_MAPT) || !defined(_HUB4_PRODUCT_REQ_)
-   fprintf(nat_fp, "-A PREROUTING -i %s -j prerouting_fromwan_todmz\n", current_wan_ifname);
-   fprintf(nat_fp, "-A POSTROUTING -j postrouting_ephemeral\n");
-// This breaks emta DNS routing on XF3. We may need some special rule here.
-   fprintf(nat_fp, "-A POSTROUTING -o %s -j postrouting_towan\n", current_wan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      fprintf(nat_fp, "-A PREROUTING -i %s -j prerouting_fromwan_todmz\n", current_wan_ifname);
+      fprintf(nat_fp, "-A POSTROUTING -j postrouting_ephemeral\n");
+   // This breaks emta DNS routing on XF3. We may need some special rule here.
+      fprintf(nat_fp, "-A POSTROUTING -o %s -j postrouting_towan\n", current_wan_ifname);
+   }
 #endif //_HUB4_PRODUCT_REQ_ ENDS
 
    fprintf(nat_fp, "-A POSTROUTING -o %s -j postrouting_tolan\n", lan_ifname);
@@ -12511,11 +12548,21 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
 #endif
 	
 #if !defined(_HUB4_PRODUCT_REQ_)
-   fprintf(filter_fp, "-A INPUT -i %s -j wan2self_mgmt\n", ecm_wan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      fprintf(filter_fp, "-A INPUT -i %s -j wan2self_mgmt\n", ecm_wan_ifname);
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
    fprintf(filter_fp, "-A INPUT -i %s -j wan2self_mgmt\n", current_wan_ifname);
 #if !defined(_HUB4_PRODUCT_REQ_) && !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_BANANAPI_R4_)
-   fprintf(filter_fp, "-A INPUT -i %s -j wan2self_mgmt\n", emta_wan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      fprintf(filter_fp, "-A INPUT -i %s -j wan2self_mgmt\n", emta_wan_ifname);
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
    fprintf(filter_fp, "-A INPUT -i %s -j lan2self\n", lan_ifname);
    fprintf(filter_fp, "-A INPUT -i %s -j wan2self\n", current_wan_ifname);
@@ -12530,10 +12577,15 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    //Add wan2self restrictions to other wan interfaces
    //ping is allowed to cm and mta inferfaces regardless the firewall level
 #if !defined(_HUB4_PRODUCT_REQ_)
-   fprintf(filter_fp, "-A INPUT -i %s -p icmp --icmp-type 8 -m limit --limit 3/second -j %s\n", ecm_wan_ifname, "xlog_accept_wan2self"); // ICMP PING
-   fprintf(filter_fp, "-A INPUT -i %s -j wan2self_ports\n", ecm_wan_ifname);
-   fprintf(filter_fp, "-A INPUT -i %s -p icmp --icmp-type 8 -m limit --limit 3/second -j %s\n", emta_wan_ifname, "xlog_accept_wan2self"); // ICMP PING
-   fprintf(filter_fp, "-A INPUT -i %s -j wan2self_ports\n", emta_wan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      fprintf(filter_fp, "-A INPUT -i %s -p icmp --icmp-type 8 -m limit --limit 3/second -j %s\n", ecm_wan_ifname, "xlog_accept_wan2self"); // ICMP PING
+      fprintf(filter_fp, "-A INPUT -i %s -j wan2self_ports\n", ecm_wan_ifname);
+      fprintf(filter_fp, "-A INPUT -i %s -p icmp --icmp-type 8 -m limit --limit 3/second -j %s\n", emta_wan_ifname, "xlog_accept_wan2self"); // ICMP PING
+      fprintf(filter_fp, "-A INPUT -i %s -j wan2self_ports\n", emta_wan_ifname);
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
    fprintf(filter_fp, "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT\n");
 
@@ -12581,37 +12633,47 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    }
 #endif //FEATURE_MAPT
 
-#ifdef _HUB4_PRODUCT_REQ_
-#ifdef HUB4_SELFHEAL_FEATURE_ENABLED
-   //SKYH4-952: Hub4 SelfHeal support.
-   //If SelfHeal_Enable syscfg value is TRUE then SET the DNS directions to GW.
-   if (isInSelfHealMode() == 1)
+#if defined(_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
    {
-       fprintf(nat_fp, "-I PREROUTING -i %s -p udp --dport 53 -j DNAT --to %s\n", lan_ifname, lan_ipaddr);
-       fprintf(nat_fp, "-I PREROUTING -i %s -p tcp --dport 53 -j DNAT --to %s\n", lan_ifname, lan_ipaddr);
-   }
+#ifdef HUB4_SELFHEAL_FEATURE_ENABLED
+      //SKYH4-952: Hub4 SelfHeal support.
+      //If SelfHeal_Enable syscfg value is TRUE then SET the DNS directions to GW.
+      if (isInSelfHealMode() == 1)
+      {
+         fprintf(nat_fp, "-I PREROUTING -i %s -p udp --dport 53 -j DNAT --to %s\n", lan_ifname, lan_ipaddr);
+         fprintf(nat_fp, "-I PREROUTING -i %s -p tcp --dport 53 -j DNAT --to %s\n", lan_ifname, lan_ipaddr);
+      }
 #endif //HUB4_SELFHEAL_FEATURE_ENABLED
+   }
 #endif //_HUB4_PRODUCT_REQ_
    
 #if !defined(_HUB4_PRODUCT_REQ_)
-   if (ecm_wan_ifname[0])  // spare eCM wan interface from Utopia firewall
-   {
-      //block port 53/67/514
-      fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 53 -j DROP\n", ecm_wan_ifname);
-      fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 67 -j DROP\n", ecm_wan_ifname);
-      fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 514 -j DROP\n", ecm_wan_ifname);
-
-      fprintf(filter_fp, "-A INPUT -i %s -j ACCEPT\n", ecm_wan_ifname);
-   }
-#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_BANANAPI_R4_)
-   if (emta_wan_ifname[0]) // spare eMTA wan interface from Utopia firewall
-   {
-      fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 80 -j DROP\n", emta_wan_ifname);
-      fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 443 -j DROP\n", emta_wan_ifname);
-
-      fprintf(filter_fp, "-A INPUT -i %s -j ACCEPT\n", emta_wan_ifname);
-   }
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
 #endif
+   {
+      if (ecm_wan_ifname[0])  // spare eCM wan interface from Utopia firewall
+      {
+         //block port 53/67/514
+         fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 53 -j DROP\n", ecm_wan_ifname);
+         fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 67 -j DROP\n", ecm_wan_ifname);
+         fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 514 -j DROP\n", ecm_wan_ifname);
+
+         fprintf(filter_fp, "-A INPUT -i %s -j ACCEPT\n", ecm_wan_ifname);
+      }
+#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_BANANAPI_R4_)
+      if (emta_wan_ifname[0]) // spare eMTA wan interface from Utopia firewall
+      {
+         fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 80 -j DROP\n", emta_wan_ifname);
+         fprintf(filter_fp, "-A INPUT -i %s -p udp --dport 443 -j DROP\n", emta_wan_ifname);
+
+         fprintf(filter_fp, "-A INPUT -i %s -j ACCEPT\n", emta_wan_ifname);
+      }
+#endif
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
    /* if(isProdImage) {
        do_ssh_IpAccessTable(filter_fp, "22", AF_INET, ecm_wan_ifname);
@@ -12692,9 +12754,14 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
 #endif
 
 #if defined (INTEL_PUMA7) || ((defined (_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_PLATFORM_BANANAPI_R4_) || defined(_COSA_QCA_ARM_)) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)) || defined (_CBR2_PRODUCT_REQ_)
-   fprintf(filter_fp, "-I FORWARD 2 -i br403 -o %s -j ACCEPT\n", current_wan_ifname);
-   fprintf(filter_fp, "-I FORWARD 3 -i %s -o br403 -j ACCEPT\n", current_wan_ifname);
-   do_secure_backhaul(filter_fp);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
+      fprintf(filter_fp, "-I FORWARD 2 -i br403 -o %s -j ACCEPT\n", current_wan_ifname);
+      fprintf(filter_fp, "-I FORWARD 3 -i %s -o br403 -j ACCEPT\n", current_wan_ifname);
+      do_secure_backhaul(filter_fp);
+   }
 #endif
 
 #if defined (INTEL_PUMA7) || (_COSA_INTEL_XB3_ARM_)
@@ -12832,8 +12899,13 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    if(!isBridgeMode) {
        fprintf(filter_fp, "-A general_input -i %s -p udp --dport 68 -j ACCEPT\n", current_wan_ifname);
 #if !defined(_HUB4_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif
+   {
        fprintf(filter_fp, "-A general_input -i %s -p udp --dport 68 -j ACCEPT\n", ecm_wan_ifname);
        fprintf(filter_fp, "-A general_input -i %s -p udp --dport 68 -j ACCEPT\n", emta_wan_ifname);
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
    }
    fprintf(filter_fp, "-A general_input -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", lan_ifname);
@@ -13683,29 +13755,38 @@ WAN_FAILOVER_SUPPORT_CHECk_END
    do_mapt_rules_v4(nat_fp, filter_fp, mangle_fp);
 #endif //FEATURE_MAPT
 
-#ifdef _HUB4_PRODUCT_REQ_
-   do_hub4_voice_rules_v4(filter_fp);
-#ifdef HUB4_BFD_FEATURE_ENABLED
-   do_hub4_bfd_rules_v4(nat_fp, filter_fp, mangle_fp);
-#endif //HUB4_BFD_FEATURE_ENABLED
-#ifdef HUB4_QOS_MARK_ENABLED
-   do_qos_output_marking_v4(mangle_fp);
-#endif
-
-#ifdef HUB4_SELFHEAL_FEATURE_ENABLED
-   do_self_heal_rules_v4(mangle_fp);
-#endif
-#elif defined(_RDKB_GLOBAL_PRODUCT_REQ_)
-#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined(_HUB4_PRODUCT_REQ_) || defined(_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
+      do_hub4_voice_rules_v4(filter_fp);
+   }
+#if defined(HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
    char syscfg_value[64] = { 0 };
    int get_ret = 0;
    get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
    if ((get_ret == 0) && atoi(syscfg_value) == 1)
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
    {
         do_hub4_bfd_rules_v4(nat_fp, filter_fp, mangle_fp);
    }
 #endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
-#endif //_HUB4_PRODUCT_REQ_
+
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
+#ifdef HUB4_QOS_MARK_ENABLED
+      do_qos_output_marking_v4(mangle_fp);
+#endif
+
+#ifdef HUB4_SELFHEAL_FEATURE_ENABLED
+      do_self_heal_rules_v4(mangle_fp);
+#endif
+   }
+#endif //_HUB4_PRODUCT_REQ_ || _RDKB_GLOBAL_PRODUCT_REQ_
 
 #ifdef LTE_USB_FEATURE_ENABLED
    do_lte_usb_rules_v4(filter_fp);
@@ -14922,40 +15003,41 @@ int prepare_ipv6_firewall(const char *fw_file)
     do_mapt_rules_v6(filter_fp);
 #endif //FEATURE_MAPT
 
-#ifdef _HUB4_PRODUCT_REQ_
-    do_hub4_voice_rules_v6(filter_fp, mangle_fp);
-    if (do_hub4_dns_rule_v6(mangle_fp) == 0)
-    {
-        FIREWALL_DEBUG("INFO: Firewall rule addition success for IPv6 DNS CHECKSUM \n");
-    }
-    else
-    {
-        FIREWALL_DEBUG("INFO: Firewall rule addition failed for IPv6 DNS CHECKSUM \n");
-    }
-
-#ifdef HUB4_BFD_FEATURE_ENABLED
-    do_hub4_bfd_rules_v6(filter_fp, mangle_fp);
-#endif //HUB4_BFD_FEATURE_ENABLED
-
-#ifdef HUB4_QOS_MARK_ENABLED
-   do_qos_output_marking_v6(mangle_fp);
-#endif
-
-#ifdef HUB4_SELFHEAL_FEATURE_ENABLED
-   do_self_heal_rules_v6(mangle_fp);
-#endif
-
-#elif defined(_RDKB_GLOBAL_PRODUCT_REQ_)
-#if defined (HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined(_HUB4_PRODUCT_REQ_) || defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
+      do_hub4_voice_rules_v6(filter_fp, mangle_fp);
+      if (do_hub4_dns_rule_v6(mangle_fp) == 0)
+      {
+         FIREWALL_DEBUG("INFO: Firewall rule addition success for IPv6 DNS CHECKSUM \n");
+      }
+      else
+      {
+         FIREWALL_DEBUG("INFO: Firewall rule addition failed for IPv6 DNS CHECKSUM \n");
+      }
+   }
+#if defined(HUB4_BFD_FEATURE_ENABLED) || defined (IHC_FEATURE_ENABLED)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
    char syscfg_value[64] = { 0 };
    int get_ret = 0;
    get_ret = syscfg_get(NULL, "ConnectivityCheckType", syscfg_value, sizeof(syscfg_value));
    if ((get_ret == 0) && atoi(syscfg_value) == 1)
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
    {
-        do_hub4_bfd_rules_v6(filter_fp, mangle_fp);
+      do_hub4_bfd_rules_v6(filter_fp, mangle_fp);
    }
 #endif //HUB4_BFD_FEATURE_ENABLED || IHC_FEATURE_ENABLED
-      #endif //_HUB4_PRODUCT_REQ_
+
+#ifdef HUB4_QOS_MARK_ENABLED
+      do_qos_output_marking_v6(mangle_fp);
+#endif
+
+#ifdef HUB4_SELFHEAL_FEATURE_ENABLED
+      do_self_heal_rules_v6(mangle_fp);
+#endif
+#endif //_HUB4_PRODUCT_REQ_ || _RDKB_GLOBAL_PRODUCT_REQ_
    #ifdef RDKB_EXTENDER_ENABLED  
    }
    #endif
@@ -14992,10 +15074,6 @@ int prepare_ipv6_firewall(const char *fw_file)
          }
 
    #endif
-
-#if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
-   do_telcovoice_rules_v6(filter_fp,mangle_fp);
-#endif // defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
 
 	/*add rules before this*/
 #if !defined(_BWG_PRODUCT_REQ_)
@@ -15429,11 +15507,16 @@ static void do_ipv6_filter_table(FILE *fp){
       //ping is allowed for cm and emta regardless whatever firewall level is
 
 #if !defined(_HUB4_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
       fprintf(fp, "-A INPUT -i %s -p icmpv6 -m icmp6 --icmpv6-type 128 -j PING_FLOOD\n", ecm_wan_ifname); // Echo request
       fprintf(fp, "-A INPUT -i %s -p icmpv6 -m icmp6 --icmpv6-type 129 -m limit --limit 10/sec -j ACCEPT\n", ecm_wan_ifname); // Echo reply
 
       fprintf(fp, "-A INPUT -i %s -p icmpv6 -m icmp6 --icmpv6-type 128 -j PING_FLOOD\n", emta_wan_ifname); // Echo request
       fprintf(fp, "-A INPUT -i %s -p icmpv6 -m icmp6 --icmpv6-type 129 -m limit --limit 10/sec -j ACCEPT\n", emta_wan_ifname); // Echo reply
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
 
     #if defined(CISCO_CONFIG_DHCPV6_PREFIX_DELEGATION) && ! defined(_CBR_PRODUCT_REQ_)
@@ -15572,11 +15655,16 @@ static void do_ipv6_filter_table(FILE *fp){
 #endif
 
 #if !defined(_HUB4_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
       // for tftp software download to work
       fprintf(fp, "-A INPUT -i %s -p udp --dport 53 -j DROP\n", ecm_wan_ifname);
       fprintf(fp, "-A INPUT -i %s -p udp --dport 67 -j DROP\n", ecm_wan_ifname);
       fprintf(fp, "-A INPUT -i %s -p udp --dport 514 -j DROP\n", ecm_wan_ifname);
       fprintf(fp, "-A INPUT -i %s -j ACCEPT\n", ecm_wan_ifname);
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
 
       // Return traffic. The equivalent of IOS 'established'
@@ -15593,7 +15681,21 @@ static void do_ipv6_filter_table(FILE *fp){
       //{
            // DNS resolver request from client
            // DNS server replies from Internet servers
-#if !defined(_HUB4_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+   {
+      // Remove burst limit on Hub4 IPv6 DNS requests
+      fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 53 -j ACCEPT\n", lan_ifname);
+      fprintf(fp, "-A INPUT -i %s -p tcp -m tcp --dport 53 -j ACCEPT\n", lan_ifname);
+      fprintf(fp, "-A INPUT ! -i %s -p udp -m udp --sport 53 -j ACCEPT\n", lan_ifname);
+   }
+   else
+   {
+      fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 53 -m limit --limit 100/sec -j ACCEPT\n", lan_ifname);
+      //fprintf(fp, "-A INPUT -i %s -p udp -m udp --sport 53 -m limit --limit 100/sec -j ACCEPT\n", wan6_ifname);
+      fprintf(fp, "-A INPUT ! -i %s -p udp -m udp --sport 53 -m limit --limit 100/sec -j ACCEPT\n", lan_ifname); 
+   }
+#elif !defined(_HUB4_PRODUCT_REQ_)
            fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 53 -m limit --limit 100/sec -j ACCEPT\n", lan_ifname);
            //fprintf(fp, "-A INPUT -i %s -p udp -m udp --sport 53 -m limit --limit 100/sec -j ACCEPT\n", wan6_ifname);
            fprintf(fp, "-A INPUT ! -i %s -p udp -m udp --sport 53 -m limit --limit 100/sec -j ACCEPT\n", lan_ifname);
@@ -15609,7 +15711,20 @@ static void do_ipv6_filter_table(FILE *fp){
 		int cnt =0;
 		for(cnt = 0;cnt < inf_num;cnt++)
 		{
-#if !defined(_HUB4_PRODUCT_REQ_)            
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+         if( 0 == strncmp( devicePartnerId, "sky-", 4 ) )
+         {
+               // Remove burst limit on Hub4 IPv6 DNS requests
+            fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 53 -j ACCEPT\n", Interface[cnt]);
+            fprintf(fp, "-A INPUT -i %s -p tcp -m tcp --dport 53 -j ACCEPT\n", Interface[cnt]);
+            fprintf(fp, "-A INPUT ! -i %s -p udp -m udp --sport 53 -j ACCEPT\n", Interface[cnt]);
+         }
+         else
+         {
+            fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 53 -m limit --limit 100/sec -j ACCEPT\n", Interface[cnt]);
+            fprintf(fp, "-A INPUT ! -i %s -p udp -m udp --sport 53 -m limit --limit 100/sec -j ACCEPT\n", Interface[cnt]);
+         }
+#elif !defined(_HUB4_PRODUCT_REQ_)            
 		   fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 53 -m limit --limit 100/sec -j ACCEPT\n", Interface[cnt]);
 		   fprintf(fp, "-A INPUT ! -i %s -p udp -m udp --sport 53 -m limit --limit 100/sec -j ACCEPT\n", Interface[cnt]);
 #else
@@ -15861,8 +15976,13 @@ v6GPFirewallRuleNext:
 #endif //FEATURE_MAPT
 
 #if !defined(_HUB4_PRODUCT_REQ_)
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+   if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+   {
       fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", lan_ifname, ecm_wan_ifname);
       fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", lan_ifname, emta_wan_ifname);
+   }
 #endif /*_HUB4_PRODUCT_REQ_*/
       if(inf_num!= 0)
 	  {
@@ -15927,8 +16047,13 @@ v6GPFirewallRuleNext:
 			}	
 		      fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", Interface[cnt], wan6_ifname);
 #ifndef _HUB4_PRODUCT_REQ_
-		      fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", Interface[cnt], ecm_wan_ifname);
-		      fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", Interface[cnt], emta_wan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+         if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+         {
+            fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", Interface[cnt], ecm_wan_ifname);
+		      fprintf(fp, "-A FORWARD -i %s -o %s -j lan2wan\n", Interface[cnt], emta_wan_ifname);  
+         }
 #endif
 		}
 	  }
@@ -15980,8 +16105,13 @@ v6GPFirewallRuleNext:
       // established communication from WAN is accepted
       fprintf(fp, "-A FORWARD -i %s -m state --state ESTABLISHED,RELATED -j ACCEPT\n", wan6_ifname);
 #if !defined(_HUB4_PRODUCT_REQ_)
-      fprintf(fp, "-A FORWARD -i %s -m state --state ESTABLISHED,RELATED -j ACCEPT\n", ecm_wan_ifname);
-      fprintf(fp, "-A FORWARD -i %s -m state --state ESTABLISHED,RELATED -j ACCEPT\n", emta_wan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+      if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+      {
+         fprintf(fp, "-A FORWARD -i %s -m state --state ESTABLISHED,RELATED -j ACCEPT\n", ecm_wan_ifname);
+         fprintf(fp, "-A FORWARD -i %s -m state --state ESTABLISHED,RELATED -j ACCEPT\n", emta_wan_ifname);
+      }
 #endif /*_HUB4_PRODUCT_REQ_*/
 
       // ICMP varies and are rate limited anyway
@@ -16013,8 +16143,13 @@ v6GPFirewallRuleNext:
 #endif //FEATURE_MAPT
 
 #if !defined(_HUB4_PRODUCT_REQ_)
-      fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", ecm_wan_ifname, lan_ifname);
-      fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", emta_wan_ifname, lan_ifname);
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+      if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+      {
+         fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", ecm_wan_ifname, lan_ifname);
+         fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", emta_wan_ifname, lan_ifname);
+      }
 #endif /*_HUB4_PRODUCT_REQ_*/
       if(inf_num!= 0)
 	  {
@@ -16023,8 +16158,13 @@ v6GPFirewallRuleNext:
 		{
 		      fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", wan6_ifname, Interface[cnt]);
 #ifndef _HUB4_PRODUCT_REQ_
+#if defined (_RDKB_GLOBAL_PRODUCT_REQ_)
+      if( 0 != strncmp( devicePartnerId, "sky-", 4 ) )
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+      {
 		      fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", ecm_wan_ifname, Interface[cnt]);
 		      fprintf(fp, "-A FORWARD -i %s -o %s -j wan2lan\n", emta_wan_ifname, Interface[cnt]);
+      }
 #endif
 		}
 	  }
@@ -17389,133 +17529,3 @@ static int do_wpad_isatap_blockv6 (FILE *filter_fp)
 
     return 0;
 }
-#if defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER)
-static int do_telcovoice_rules_v6(FILE *filter_fp, FILE *mangle_fp)
-{
-    char buf1[512] = {0};
-    char buf2[512] = {0};
-    char addr[64] = {0};
-    char port[16] = {0};
-    char markVal[16] = {0};
-    char *pAddr = NULL;
-    char *pToken = NULL;
-    fprintf(filter_fp, ":VOICE - [0:0]\n");
-    fprintf(filter_fp, "-I INPUT 1 -p udp -m udp -j VOICE\n");
-    fprintf(filter_fp, "-A VOICE -p udp -m udp --dport 5060 -j REJECT --reject-with icmp6-port-unreachable\n");
-    fprintf(mangle_fp, ":VOICE_MANGLE - [0:0]\n");
-    fprintf(mangle_fp, "-A POSTROUTING -p udp -m udp -j VOICE_MANGLE\n");
-#ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
-    char wanInterface[BUFLEN_64] = {'\0'};
-    wanmgr_get_wan_interface(wanInterface);
-#endif
-    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_PROXYLIST, buf1, sizeof(buf1)))
-    {
-        printf("ipv6 proxy list:%s \n", buf1);
-        pAddr = strtok(buf1, ",");
-        while( pAddr != NULL )
-        {
-            printf("ipv6 proxy Addr is :%s \n", pAddr);
-            //Add these rules for each of proxy addresses
-#ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
-            fprintf(filter_fp, "-I VOICE 1  -s %s -i %s -p udp -m udp --dport 5060 -j ACCEPT\n", pAddr, wanInterface);
-#else
-            fprintf(filter_fp, "-I VOICE 1  -s %s -i erouter0 -p udp -m udp --dport 5060 -j ACCEPT\n", pAddr);
-#endif
-            pAddr = strtok(NULL, ",");
-        }
-    }
-    else
-    {
-        FIREWALL_DEBUG("ERROR: Failed to get IPv6 Proxy list \n");
-    }
-    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_RTPLIST, buf2, sizeof(buf2)))
-    {
-        printf("rtp addr list:%s \n", buf2);
-        //get ip address & port pair
-        pToken = strtok(buf2, ",");
-        while( pToken != NULL )
-        {
-            //get ip address
-            memset(addr, 0, sizeof(addr));
-            strcpy(addr, pToken);
-            pToken = strtok(NULL, ";");
-            memset(port, 0, sizeof(port));
-            strcpy(port, pToken);
-            //Add these rules for each of RTP addresses
-#ifdef FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE
-            fprintf(filter_fp, "-I VOICE 1 -s %s -i %s -p udp -m udp --dport %s -j ACCEPT\n", addr, wanInterface, port);
-#else
-            fprintf(filter_fp, "-I VOICE 1 -s %s -i erouter0 -p udp -m udp --dport %s -j ACCEPT\n", addr, port);
-#endif
-            pToken = strtok(NULL, ",");
-        }
-    }
-    else
-    {
-        FIREWALL_DEBUG("ERROR: Failed to get RTP addr list \n");
-    }
-    memset(buf2, 0 , sizeof(buf2));
-    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_ETHERNETPRIORITY, buf2, sizeof(buf2)))
-    {
-        //get ip address ,port and SKB mark.
-        pToken = strtok(buf2, ",");
-        while( pToken != NULL )
-        {
-            memset(addr, 0, sizeof(addr));
-            strncpy(addr, pToken, sizeof(addr) -1);
-            pToken = strtok(NULL, ",");
-            if(pToken != NULL)
-            {
-               memset(port, 0, sizeof(port) - 1);
-               strncpy(port, pToken, sizeof(port));
-               pToken = strtok(NULL, ";");
-               if(pToken != NULL)
-               {
-                  memset(markVal, 0, sizeof(markVal));
-                  strncpy(markVal, pToken, sizeof(markVal) - 1);
-                  fprintf(mangle_fp, "-A VOICE_MANGLE -d %s -p udp -m udp --sport %s -j MARK --set-xmark %s/%s\n", addr, port, markVal, markVal);
-                  pToken = strtok(NULL, ",");
-               }
-            }
-        }
-    }
-    else
-    {
-        FIREWALL_DEBUG("ERROR: Failed to get RTP SKB mark \n");
-    }
-    memset(buf2, 0 , sizeof(buf2));
-    if (0 == sysevent_get(sysevent_fd, sysevent_token, SYSEVENT_VOICE_IPV6_DSCP, buf2, sizeof(buf2)))
-    {
-        //get ip address ,port and DSCP mark.
-        pToken = strtok(buf2, ",");
-        while( pToken != NULL )
-        {
-            memset(addr, 0, sizeof(addr));
-            strncpy(addr, pToken, sizeof(addr) -1);
-            pToken = strtok(NULL, ",");
-            if (pToken != NULL)
-            {
-               memset(port, 0, sizeof(port) - 1);
-               strncpy(port, pToken, sizeof(port));
-               pToken = strtok(NULL, ";");
-               if (pToken != NULL)
-               {
-                  memset(markVal, 0, sizeof(markVal));
-                  strncpy(markVal, pToken, sizeof(markVal) - 1);
-                  // DSCP range (0-63)
-                  if((atoi(markVal) >= 0) && (atoi(markVal) <= 63))
-                  {
-                      fprintf(mangle_fp, "-A VOICE_MANGLE -d %s -p udp -m udp --sport %s -j DSCP --set-dscp %s\n", addr, port, markVal);
-                  }
-                  pToken = strtok(NULL, ",");
-               }
-            }
-        }
-    }
-    else
-    {
-        FIREWALL_DEBUG("ERROR: Failed to get DSCP mark sys event.\n");
-    }
-    return 0;
-}
-#endif /*defined(_RDKB_GLOBAL_PRODUCT_REQ_) && defined(FEATURE_RDKB_TELCOVOICE_MANAGER) */
