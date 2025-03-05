@@ -635,6 +635,11 @@ STATIC int Is_Dslite_Dhcpv6option64_received(struct serv_wan *sw)
     return 0;
 }
 
+/*The function start_dhcpv6_client() is not called anywhere when the macro DSLITE_FEATURE_SUPPORT is activated, resulting in a compilation error.
+So this definition is being disabled at compile time, until it is used.
+*/
+
+#if 0
 STATIC int start_dhcpv6_client(struct serv_wan *sw)
 {
     char buf[8];
@@ -672,6 +677,7 @@ STATIC int start_dhcpv6_client(struct serv_wan *sw)
     }
     return 0;
 }
+#endif
 
 STATIC int wait_till_dhcpv6_client_reply(struct serv_wan *sw)
 {
