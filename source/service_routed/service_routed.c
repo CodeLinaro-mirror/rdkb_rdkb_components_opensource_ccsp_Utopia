@@ -1075,10 +1075,33 @@ STATIC int gen_zebra_conf(int sefd, token_t setok)
 #endif
         fprintf(fp, "interface %s\n", lan_if);
         fprintf(fp, "   no ipv6 nd suppress-ra\n");
-#if defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_)) || defined(_SCER11BEL_PRODUCT_REQ_)
-#if defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined (_HUB4_PRODUCT_REQ_) && (!defined (_WNXL11BWL_PRODUCT_REQ_))
+        if(strlen(orig_prefix)) 
+        { //SKYH4-1765: we add only the latest prefix data to zebra.conf.
+            fprintf(fp, "   ipv6 nd prefix %s %s 0\n", orig_prefix, prev_valid_lft); //Previous prefix with '0' as the preferred time value
+
+            // set previous_ipv6_prefix to EMPTY, since previous_ipv6_prefix pass to zebra for One time only
+            strncpy(orig_prefix, "", sizeof(orig_prefix));
+            sysevent_set(sefd, setok, "previous_ipv6_prefix", orig_prefix, 0);
+        }
+        else if (strlen(prefix) && (strncmp(server_type, "2", 1) == 0))
+        {
+            fprintf(fp, "   ipv6 nd prefix %s %s %s\n", prefix, valid_lft, preferred_lft);
+        }
+        else if(strlen(prefix)) {
+            fprintf(fp, "   ipv6 nd prefix %s 0 0\n", prefix);
+        }
+
+        if (strlen(lan_addr_prefix) && (strncmp(server_type, "2", 1) == 0))
+        {
+            fprintf(fp, "   ipv6 nd prefix %s\n", lan_addr_prefix);
+        }
+        else if (strlen(lan_addr_prefix)) {
+            fprintf(fp, "   ipv6 nd prefix %s 0 0\n", lan_addr_prefix);
+        }   
+#else
+#if defined(_RDKB_GLOBAL_PRODUCT_REQ_)
         if ( TRUE == IsThisCurrentPartnerID("sky-") )
-#endif /** _SCER11BEL_PRODUCT_REQ_ */
         {
             if(strlen(orig_prefix)) 
             { //SKYH4-1765: we add only the latest prefix data to zebra.conf.
@@ -1104,7 +1127,9 @@ STATIC int gen_zebra_conf(int sefd, token_t setok)
                 fprintf(fp, "   ipv6 nd prefix %s 0 0\n", lan_addr_prefix);
             }   
         }
-#else
+        else
+#endif /** _RDKB_GLOBAL_PRODUCT_REQ_ */
+        {
             //Do not write a config line for the prefix if it's blank
             if (strlen(prefix))
             {
@@ -1159,7 +1184,7 @@ STATIC int gen_zebra_conf(int sefd, token_t setok)
             if (strlen(orig_prefix))
                 fprintf(fp, "   ipv6 nd prefix %s 0 0\n", orig_prefix);
 #endif
-
+        }
 #endif//_HUB4_PRODUCT_REQ_
 #if defined (INTEL_PUMA7)
             //Intel Proposed RDKB Generic Bug Fix from XB6 SDK
