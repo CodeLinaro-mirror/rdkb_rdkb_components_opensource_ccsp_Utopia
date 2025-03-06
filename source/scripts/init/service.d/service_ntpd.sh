@@ -605,7 +605,7 @@ service_start ()
        if [ -n "$QUICK_SYNC_WAN_IP" ]; then
            # Try and Force Quick Sync to Run on a single interface
            echo_t "SERVICE_NTPD : Starting NTP Quick Sync" >> $NTPD_LOG_NAME
-           if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ] || [ "$BOX_TYPE" == "SCER11BEL" ]; then
+           if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ] || [ "$ntpHealthCheck" = "true" ]; then
                if [ $WAN_IPv6_UP -eq 1 ]; then
                    $BIN -c $NTP_CONF_QUICK_SYNC --interface "$QUICK_SYNC_WAN_IP" -x -gq -l $NTPD_LOG_NAME & 
                    QUICK_SYNC_PID=$!
