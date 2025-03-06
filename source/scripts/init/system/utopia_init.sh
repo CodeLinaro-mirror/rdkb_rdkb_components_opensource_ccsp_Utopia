@@ -109,6 +109,7 @@ SYSCFG_NEW_BKUP_FILE=$SYSCFG_PERSISTENT_PATH/syscfg_bkup.db
 PSM_CUR_XML_CONFIG_FILE_NAME="$SYSCFG_TMP_LOCATION/bbhm_cur_cfg.xml"
 PSM_BAK_XML_CONFIG_FILE_NAME="$SYSCFG_MOUNT/bbhm_bak_cfg.xml"
 PSM_TMP_XML_CONFIG_FILE_NAME="$SYSCFG_MOUNT/bbhm_tmp_cfg.xml"
+PSM_DEF_XML_CONFIG_FILE_NAME="/usr/ccsp/config/bbhm_def_cfg.xml"
 XDNS_DNSMASQ_SERVERS_CONFIG_FILE_NAME="$SYSCFG_MOUNT/dnsmasq_servers.conf"
 FACTORY_RESET_REASON=false
 
@@ -774,4 +775,21 @@ fi
 
 if [ "$BOX_TYPE" = "VNTXER5" ]; then
        /etc/vbv_reboot_reason.sh &
+fi
+
+if [ "$BOX_TYPE" = "VNTXER5" ]; then
+   if [ "$FACTORY_RESET_REASON" = "false" ]; then
+      wanifcount=`sed -n "/dmsb.wanmanager.wan.interfacecount/p" $PSM_CUR_XML_CONFIG_FILE_NAME | awk -F"[><]" '{print $3}'`
+      if [ "$wanifcount" != "" ]; then
+         wanifdefcount=`sed -n "/dmsb.wanmanager.wan.interfacecount/p" $PSM_DEF_XML_CONFIG_FILE_NAME | awk -F"[><]" '{print $3}'`
+         if [ "$wanifdefcount" != "" ]; then
+            echo "[utopia][init] No. of WAN Interface from $PSM_DEF_XML_CONFIG_FILE_NAME:"$wanifdefcount
+            echo "[utopia][init] No. of WAN Interface from $PSM_CUR_XML_CONFIG_FILE_NAME:"$wanifcount
+            if [ "$wanifcount" != "$wanifdefcount" ]; then
+               delCmd=`sed -i "/dmsb.wanmanager.wan.interfacecount/d" $PSM_CUR_XML_CONFIG_FILE_NAME`
+               echo "[utopia][init] WAN interface count mismatched so deleting this dmsb.wanmanager.wan.interfacecount entry from $PSM_CUR_XML_CONFIG_FILE_NAME to make sure proper interface count"
+            fi
+         fi
+      fi
+   fi
 fi
