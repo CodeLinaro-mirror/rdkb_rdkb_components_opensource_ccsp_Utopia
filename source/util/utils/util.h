@@ -47,9 +47,10 @@
 #define MANAGE_WIFI_PSM_STR "dmsb.MultiLAN.ManageWiFi_l3net"
 #define MANAGE_WIFI_BRIDGE_NAME "dmsb.l2net.%s.Name"
 #define MANAGE_WIFI_V4_ADDR "dmsb.l3net.%s.V4Addr"
-void psmGet(void *bus_handle, char *pParamName, char *pParamValue, size_t len);
 void updateDhcpPoolData(void * bus_handle, char * pIndex, FILE * pFile);
 #endif /* WIFI_MANAGE_SUPPORTED*/
+
+void psmGet(void *bus_handle, char *pParamName, char *pParamValue, size_t len);
 int vsystem(const char *fmt, ...);
 int sysctl_iface_set(const char *path, const char *ifname, const char *content);
 int iface_get_hwaddr(const char *ifname, char *mac, size_t size);
