@@ -334,6 +334,8 @@ set_ntp_driftsync_status ()
 service_start ()
 {
 
+   local NTP_SERVER_URL_RESTORE="false"
+
     # this needs to be hooked up to syscfg for specific timezone
    if [ -n "$SYSCFG_ntp_enabled" ] && [ "0" = "$SYSCFG_ntp_enabled" ] ; then
 # RDKB-37275 setting status as unsynchronised.
@@ -388,8 +390,20 @@ service_start ()
        # Start NTP Config Creation with Multiple Server Setup
        echo_t "SERVICE_NTPD : Creating NTP config with New NTP Enabled" >> $NTPD_LOG_NAME
        if [ -n "$SYSCFG_ntp_server1" ] && [ "$SYSCFG_ntp_server1" != "no_ntp_address" ]; then
-           echo "server $SYSCFG_ntp_server1 true" >> $NTP_CONF_TMP
-           echo "restrict $SYSCFG_ntp_server1 nomodify notrap noquery" >> $NTP_CONF_TMP
+           device_mode=$(syscfg get Device_Mode)
+           ntp_not_synced=$(sysevent get ntpd-syncTimeFromPrimary)
+           if [ "$BOX_TYPE" = "WNXL11BWL" ] && [ "$WanFailOverSupportEnable" = "true" ] && [ "$device_mode" = "1" ] && [ "$ntp_not_synced" = "syncfromPrimaryGateway" ]; then
+               #setting ntpd-syncTimeFromPrimary to empty to avoid xle sync from xb if ntpd restarted for different reason
+               sysevent set ntpd-syncTimeFromPrimary
+               # Extract default route interface IP
+               gateway_ip=$(ip route show | awk '/default/ {print $3}')
+               echo "server $gateway_ip true" >> $NTP_CONF_TMP
+               echo "restrict $gateway_ip nomodify notrap noquery" >> $NTP_CONF_TMP
+               NTP_SERVER_URL_RESTORE="true"
+           else
+               echo "server $SYSCFG_ntp_server1 true" >> $NTP_CONF_TMP
+               echo "restrict $SYSCFG_ntp_server1 nomodify notrap noquery" >> $NTP_CONF_TMP
+           fi
            VALID_SERVER="true"
        fi
        if [ -n "$SYSCFG_ntp_server2" ] && [ "$SYSCFG_ntp_server2" != "no_ntp_address" ]; then
@@ -443,9 +457,20 @@ service_start ()
 
        # Start NTP Config Creation with Legacy Single Server Setup
        echo_t "SERVICE_NTPD : Creating NTP config" >> $NTPD_LOG_NAME
-
-       echo "server $SYSCFG_ntp_server1 true" >> $NTP_CONF_TMP
-       echo "restrict $SYSCFG_ntp_server1 nomodify notrap noquery" >> $NTP_CONF_TMP
+       device_mode=$(syscfg get Device_Mode)
+       ntp_not_synced=$(sysevent get ntpd-syncTimeFromPrimary)
+       if [ "$BOX_TYPE" = "WNXL11BWL" ] && [ "$WanFailOverSupportEnable" = "true" ] && [ "$device_mode" = "1" ] && [ "$ntp_not_synced" = "syncfromPrimaryGateway" ]; then
+           #setting ntpd-syncTimeFromPrimary to empty to avoid xle sync from xb if ntpd restarted for different reason
+           sysevent set ntpd-syncTimeFromPrimary
+           # Extract default route interface IP
+           gateway_ip=$(ip route show | awk '/default/ {print $3}')
+           echo "server $gateway_ip true" >> $NTP_CONF_TMP
+           echo "restrict $gateway_ip nomodify notrap noquery" >> $NTP_CONF_TMP
+           NTP_SERVER_URL_RESTORE="true"
+       else
+           echo "server $SYSCFG_ntp_server1 true" >> $NTP_CONF_TMP
+           echo "restrict $SYSCFG_ntp_server1 nomodify notrap noquery" >> $NTP_CONF_TMP
+       fi
 
    fi # if [ "$SYSCFG_new_ntp_enabled" = "true" ]; then
 
@@ -499,6 +524,14 @@ service_start ()
        fi
    fi
 
+   #since the XLE sync with XB time is needed only for quick sync , restored NTP server URLs instead of xb br403 IP
+   if [ "$NTP_SERVER_URL_RESTORE" = "true" ]; then
+       # Extract default route interface IP
+       gateway_ip=$(ip route show | awk '/default/ {print $3}')
+       sed -i "s/server $gateway_ip true/server $SYSCFG_ntp_server1 true/" $NTP_CONF_TMP
+       sed -i "s/restrict $gateway_ip nomodify notrap noquery/restrict $SYSCFG_ntp_server1 nomodify notrap noquery/"  $NTP_CONF_TMP
+   fi
+
    # interface rules can't be written to quick sync conf file so write here after quick sync conf file creation.
    echo "interface ignore wildcard" >> $NTP_CONF_TMP
    echo "interface listen 127.0.0.1" >> $NTP_CONF_TMP
@@ -519,6 +552,9 @@ service_start ()
 
    if [ -n "$WAN_IP" ]; then
        echo "interface listen $WAN_IP" >> $NTP_CONF_TMP
+       if [ "$WanFailOverSupportEnable" = "true" ] && [ "$BOX_TYPE" = "XB6" ]; then
+           echo "interface listen br403" >> $NTP_CONF_TMP
+       fi
    fi  
 
    if [ "$BOX_TYPE" = "HUB4" ] || [ "$BOX_TYPE" = "SR300" ] || [ "$BOX_TYPE" = "SE501" ] || [ "$BOX_TYPE" = "SR213" ] || [ "$BOX_TYPE" = "WNXL11BWL" ] || [ "$LANIPV6Support" = "true" ]; then
