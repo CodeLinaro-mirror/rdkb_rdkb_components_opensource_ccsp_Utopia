@@ -520,6 +520,26 @@ virtual_interface_ebtables_rules ()
     fi
 }
 
+reset_usb_ports ()
+{
+    usb_devices=$(ls /sys/bus/usb/devices/)
+
+    for device in $usb_devices; do
+        # Skip if it's not a valid USB device (like 'usb1' or 'usb2' directories)
+        if [[ "$device" =~ ^usb[0-9]+$ ]]; then
+            # Check if the device has a driver bound to it
+            if [ -e "/sys/bus/usb/devices/$device/driver" ]; then
+                # Unbind the USB device
+                echo -n "$device" > /sys/bus/usb/drivers/usb/unbind
+                # Wait for 2 seconds to ensure the device is unbound
+                sleep 2
+                # Re-bind the USB device
+                echo -n "$device" > /sys/bus/usb/drivers/usb/bind
+            fi
+        fi
+    done
+}
+
 wan_wait ()
 {
    retry=0 
@@ -697,10 +717,11 @@ service_start ()
 
          # Force a DHCP renew by issuing a physical link down/up, when WAN port mode switches between bridging and routing
          PSM_MODE=`sysevent get system_psm_mode`
-         #if [ "$PSM_MODE" != "1" ]; then
+         if [ "$PSM_MODE" != "1" ]; then
             # It is not a good practice to force all physical links to refresh -- should have used arguments to specify which ports/links
             #gw_lan_refresh
-         #fi
+	    reset_usb_ports
+         fi
 
        prepare_hostname
        if [  -f /tmp/wifi_initialized ];then
@@ -759,7 +780,7 @@ LAN_NETMASK=`syscfg get lan_netmask`
 
 
 service_init 
-echo "service_bridge.sh called with $1 $2" > /dev/console
+echo "service_bridge_rpi.sh called with $1 $2" > /dev/console
 case "$1" in
    "${SERVICE_NAME}-start")
       firewall firewall-stop
@@ -769,6 +790,7 @@ case "$1" in
           touch $POSTD_START_FILE
           execute_dir /etc/utopia/post.d/
       fi         
+      reset_usb_ports
       #gw_lan_refresh
       sysevent set firewall-restart
       ;;
@@ -779,6 +801,7 @@ case "$1" in
               touch $POSTD_START_FILE
               execute_dir /etc/utopia/post.d/
         fi           
+        reset_usb_ports
         #gw_lan_refresh
         sysevent set firewall-restart
 
