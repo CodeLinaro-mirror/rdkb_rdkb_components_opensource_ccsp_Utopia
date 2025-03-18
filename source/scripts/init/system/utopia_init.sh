@@ -37,7 +37,10 @@
 #   This file contains the code to initialize the board
 #------------------------------------------------------------------
 UTOPIA_PATH=/etc/utopia/service.d
-SWITCH_HANDLER=$UTOPIA_PATH/service_multinet/handle_sw.sh
+source /etc/device.properties
+if [ -z "$SWCTL_BIN_NOT_SUPPORTED" ] || [ "$SWCTL_BIN_NOT_SUPPORTED" == "false" ]; then
+	SWITCH_HANDLER=$UTOPIA_PATH/service_multinet/handle_sw.sh
+fi
 INIT_DIR=/etc/utopia/registration.d
 BINPATH="/usr/bin"
 CCSPPATH="/usr/ccsp"
@@ -45,7 +48,7 @@ CCSPPATH="/usr/ccsp"
 ls /tmp/pam_initialized* > /tmp/pam_init_status
 
 source $UTOPIA_PATH/log_capture_path.sh
-source /etc/device.properties
+
 
 dmesg -n 5
 
@@ -531,7 +534,9 @@ vconfig add l2sd0 500
 if [ "$BOX_TYPE" = "XB3" ];then
 	$UTOPIA_PATH/service_multinet_exec add_ipc_vlan &
 else
-	$SWITCH_HANDLER addVlan 0 500 sw_6
+	if [ -z "$SWCTL_BIN_NOT_SUPPORTED" ] || [ "$SWCTL_BIN_NOT_SUPPORTED" == "false" ]; then
+		$SWITCH_HANDLER addVlan 0 500 sw_6
+	fi
 fi
 ifconfig l2sd0.500 192.168.101.1
 
@@ -555,7 +560,9 @@ vconfig add l2sd0 4090
 if [ "$BOX_TYPE" = "XB3" ];then
 	$UTOPIA_PATH/service_multinet_exec add_radius_vlan &
 else
-	$SWITCH_HANDLER addVlan 0 4090 sw_6 
+	if [ -z "$SWCTL_BIN_NOT_SUPPORTED" ] || [ "$SWCTL_BIN_NOT_SUPPORTED" == "false" ]; then
+		$SWITCH_HANDLER addVlan 0 4090 sw_6 
+	fi
 fi
 ifconfig l2sd0.4090 192.168.251.1 netmask 255.255.255.0 up
 ip rule add from all iif l2sd0.4090 lookup erouter
@@ -566,7 +573,9 @@ vconfig add l2sd0 1060
 if [ "$BOX_TYPE" == "XB3" ];then
         $UTOPIA_PATH/service_multinet_exec add_meshbhaul_vlan &
 else
-        $SWITCH_HANDLER addVlan 0 1060 sw_6
+	if [ -z "$SWCTL_BIN_NOT_SUPPORTED" ] || [ "$SWCTL_BIN_NOT_SUPPORTED" == "false" ]; then
+	        $SWITCH_HANDLER addVlan 0 1060 sw_6
+	fi
 fi
 ifconfig l2sd0.1060 up
 ip rule add from all iif l2sd0.1060 lookup erouter
@@ -583,11 +592,15 @@ ifconfig brebhaul 169.254.85.1 netmask 255.255.255.0 up
 
 #--------Marvell LAN-side egress flood mitigation----------------
 echo_t "88E6172: Do not egress flood unicast with unknown DA"
-swctl -c 11 -p 5 -r 4 -b 0x007b
+if [ -z "$SWCTL_BIN_NOT_SUPPORTED" ] || [ "$SWCTL_BIN_NOT_SUPPORTED" == "false" ]; then
+	swctl -c 11 -p 5 -r 4 -b 0x007b
+fi
 
 # Creating IOT VLAN on ARM
-swctl -c 16 -p 0 -v 106 -m 2 -q 1
-swctl -c 16 -p 7 -v 106 -m 2 -q 1
+if [ -z "$SWCTL_BIN_NOT_SUPPORTED" ] || [ "$SWCTL_BIN_NOT_SUPPORTED" == "false" ]; then
+	swctl -c 16 -p 0 -v 106 -m 2 -q 1
+	swctl -c 16 -p 7 -v 106 -m 2 -q 1
+fi
 vconfig add l2sd0 106
 brctl addbr br106
 ifconfig l2sd0.106 up
