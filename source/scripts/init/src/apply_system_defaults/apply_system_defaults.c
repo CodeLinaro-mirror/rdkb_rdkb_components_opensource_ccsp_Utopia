@@ -2024,8 +2024,8 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
         *secdhcpoption = NULL;
     int	    isNeedToApplyPartnersDefault = 1;
     int	    isNeedToApplyPartnersPSMDefault = 0;
-    char    ntpServer1[64]     = {0};
-    char    *jsonNTPServer1    = NULL;
+    char    ntpServer[64]     = {0};
+    char    *jsonNTPServer    = NULL;
     cJSON   *alwaysPartnerObj  = NULL;
     cJSON   *alwaysJson        = NULL;
     cJSON   *alwaysParamObjVal = NULL;
@@ -2840,89 +2840,109 @@ if ( paramObjVal != NULL )
 		}
 	}
 
-    //Objects that always need to be checked
-    // RDKB-28869 With Two Box Solutions NTP is now critical. JSON NTP Server 1 value must always be added if nothing exists for XBs to come online
-    for (iterator = 0; iterator <= RETRY_COUNT; iterator++)
-    {
-       if (   ( 0 == syscfg_get(NULL, "ntp_server1", ntpServer1, sizeof(ntpServer1)))
-           || (RETRY_COUNT == iterator)
-       )
-       {
-          if(   (0 == strncmp(ntpServer1, "no_ntp_address", sizeof(ntpServer1)))
-             || (0 == strnlen(ntpServer1, sizeof(ntpServer1)))
-          )
-          {
-             alwaysJson = cJSON_Parse( data );
-             if( !alwaysJson ) 
-             {
-                error_ptr = (char *)cJSON_GetErrorPtr();
-                if (error_ptr != NULL)
-                {
-                   APPLY_PRINT(  "%s-%d : json file parser error at %s\n", __FUNCTION__,__LINE__, error_ptr);
-                }
-                else
-                {
-                   APPLY_PRINT(  "%s-%d : json file parser error\n", __FUNCTION__,__LINE__ );
-                }
-                return -1;
-             } 
-             else
-             {
-                APPLY_PRINT("%s - Applying  %s default ntp_server1 configuration\n", __FUNCTION__, PartnerID );
-                alwaysPartnerObj = cJSON_GetObjectItem( alwaysJson, PartnerID );
+   int numNtpServers = 1;
+   char newNTP[6] = {0};
 
-                if(NULL != alwaysPartnerObj)
-                {
-                   /* NTP Server1 is blank set JSON value */
-                   alwaysParamObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( alwaysPartnerObj, "Device.Time.NTPServer1"), "ActiveValue");
+   if (syscfg_get(NULL, "new_ntp_enabled", newNTP, sizeof(newNTP)) == 0)
+   {
+      if(0 == strncmp(newNTP, "true", sizeof(newNTP))) {
+         APPLY_PRINT("%s New NTP is enabled\n", __FUNCTION__);
+         numNtpServers = 5;
+      }
+   }
+   for (int serverNum = 1; serverNum <= numNtpServers; serverNum++)
+   {
+      char ntpServerName[12] = {0};
+      char jsonNTPItem[64] = {0};
+      snprintf(ntpServerName, sizeof(ntpServerName), "ntp_server%d", serverNum);
+      snprintf(jsonNTPItem, sizeof(jsonNTPItem), "Device.Time.NTPServer%d", serverNum);
+      //Objects that always need to be checked
+      // RDKB-28869 With Two Box Solutions NTP is now critical. JSON NTP Server 1 value must always be added if nothing exists for XBs to come online
+      for (iterator = 0; iterator <= RETRY_COUNT; iterator++)
+      {
+         if (   ( 0 == syscfg_get(NULL, ntpServerName, ntpServer, sizeof(ntpServer)))
+            || (RETRY_COUNT == iterator)
+         )
+         {
+            if(   (0 == strncmp(ntpServer, "no_ntp_address", sizeof(ntpServer)))
+               || (0 == strnlen(ntpServer, sizeof(ntpServer)))
+            )
+            {
+               alwaysJson = cJSON_Parse( data );
+               if( !alwaysJson ) 
+               {
+                  error_ptr = (char *)cJSON_GetErrorPtr();
+                  if (error_ptr != NULL)
+                  {
+                     APPLY_PRINT(  "%s-%d : json file parser error at %s\n", __FUNCTION__,__LINE__, error_ptr);
+                  }
+                  else
+                  {
+                     APPLY_PRINT(  "%s-%d : json file parser error\n", __FUNCTION__,__LINE__ );
+                  }
+                  return -1;
+               } 
+               else
+               {
+                  APPLY_PRINT("%s - Applying  %s default %s configuration\n", __FUNCTION__, PartnerID, ntpServerName );
+                  alwaysPartnerObj = cJSON_GetObjectItem( alwaysJson, PartnerID );
 
-                   if ( alwaysParamObjVal != NULL )
-                   {
-                      jsonNTPServer1 = alwaysParamObjVal->valuestring;
+                  if(NULL != alwaysPartnerObj)
+                  {
+                     /* NTP Server1 is blank set JSON value */
+                     alwaysParamObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( alwaysPartnerObj, jsonNTPItem), "ActiveValue");
 
-                      if(jsonNTPServer1 != NULL)
-                      {
-                         if(jsonNTPServer1[0]) //CID 172848: Wrong sizeof argument
-                         {
-                            set_syscfg_partner_values(jsonNTPServer1,"ntp_server1");
-                            APPLY_PRINT(" %s ntp_server1 set to json value:%s\n", __FUNCTION__, jsonNTPServer1);
-                         }
-                         else
-                         {
-                            APPLY_PRINT(" %s ntp_server1 NOT SET as json value from parse was EMPTY String\n", __FUNCTION__);
-                         }
-                         jsonNTPServer1 = NULL;
-                      }
-                      else
-                      {
-                         APPLY_PRINT("%s - jsonNTPServer1 Value is NULL\n", __FUNCTION__ );
-                      }
-                   } //if ( alwaysParamObjVal != NULL )
-                   else
-                   {
-                      APPLY_PRINT("%s - alwaysParamObjVal Object is NULL\n", __FUNCTION__ );
-                   }
-                } //if(NULL == alwaysPartnerObj)
-                else
-                {
-                   APPLY_PRINT("%s - alwaysPartnerObj Object is NULL\n", __FUNCTION__ );
-                }
-             } //if( !alwaysJson )
-          }
-          else
-          {
-             APPLY_PRINT(" %s ntp_server1 not default\n", __FUNCTION__);
-          }
+                     if ( alwaysParamObjVal != NULL )
+                     {
+                        jsonNTPServer = alwaysParamObjVal->valuestring;
 
-          break;
-       }
-       else
-       {
-          APPLY_PRINT("%s syscfg_get %d for ntp_server1 failed!\n", __FUNCTION__, iterator+1);
-          sleep(1);
-       }
-    } //For Loop
+                        if(jsonNTPServer != NULL)
+                        {
+                           if(jsonNTPServer[0]) //CID 172848: Wrong sizeof argument
+                           {
+                              set_syscfg_partner_values(jsonNTPServer, ntpServerName);
+                              APPLY_PRINT(" %s %s set to json value:%s\n", __FUNCTION__, ntpServerName, jsonNTPServer);
+                           }
+                           else
+                           {
+                              APPLY_PRINT(" %s %s NOT SET as json value from parse was EMPTY String\n", __FUNCTION__, ntpServerName);
+                           }
+                           jsonNTPServer = NULL;
+                        }
+                        else
+                        {
+                           APPLY_PRINT("%s - jsonNTPServer Value is NULL\n", __FUNCTION__ );
+                        }
+                     } //if ( alwaysParamObjVal != NULL )
+                     else
+                     {
+                        APPLY_PRINT("%s - alwaysParamObjVal Object is NULL\n", __FUNCTION__ );
+                     }
+                  } //if(NULL == alwaysPartnerObj)
+                  else
+                  {
+                     APPLY_PRINT("%s - alwaysPartnerObj Object is NULL\n", __FUNCTION__ );
+                  }
+                  cJSON_Delete(alwaysJson);
+               } //if( !alwaysJson )
+            }
+            else
+            {
+               APPLY_PRINT(" %s %s not default\n", __FUNCTION__, ntpServerName);
+            }
 
+            break;
+         }
+         else
+         {
+            APPLY_PRINT("%s syscfg_get %d for %s failed!\n", __FUNCTION__, iterator+1, ntpServerName);
+            sleep(1);
+         }
+      } //For Loop
+      //Clear ntpServerName and jsonNTPItem
+      memset(ntpServerName, 0, sizeof(ntpServerName));
+      memset(jsonNTPItem, 0, sizeof(jsonNTPItem));
+   }
     return 0;
 }
 #if defined (_XB6_PRODUCT_REQ_) || defined(_HUB4_PRODUCT_REQ_)

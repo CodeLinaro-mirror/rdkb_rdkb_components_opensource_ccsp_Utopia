@@ -611,6 +611,20 @@ until [ -e "/tmp/syseventd_connection" ]; do
     fi
 done
 
+# check if new_ntp_init_val is empty or not
+#If user changes new_ntp_enabled to false, then new_ntp_init_val will block from overwriting the new_ntp_enabled value.
+SYSCFG_NEW_NTP_INIT_VAL="`syscfg get new_ntp_init_val`"
+if [ -z "$SYSCFG_NEW_NTP_INIT_VAL" ]; then
+   syscfg set new_ntp_init_val "true"
+   # Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.newNTP.Enable
+   SYSCFG_NEW_NTP_VAL="`syscfg get new_ntp_enabled`"
+   if [ "$SYSCFG_NEW_NTP_VAL" == "false" ]; then
+      syscfg set new_ntp_enabled "true"
+   fi
+   syscfg commit
+   sync
+fi
+
 echo "[utopia][init] Setting any unset system values to default"
 apply_system_defaults
 #ARRISXB6-2998
