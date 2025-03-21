@@ -72,6 +72,9 @@
 
 #define MAX_TS_ASN_COUNT    64
 
+#define BRIDGE_MODE "2"
+#define PRIMARY_LAN "dmsb.MultiLAN.PrimaryLAN_l3net"
+
 extern int g_iSyseventfd;
 extern token_t g_tSysevent_token;
 
@@ -1675,8 +1678,37 @@ void resync_instance (int l3_inst)
 	char *l_cParam[1] = {0};
 	char *l_cpPsm_Get = NULL;
 
-	int l_iRet_Val, l_iL2Inst;
+	int l_iRet_Val, l_iL2Inst, l_iL3Inst;
 	async_id_t l_sAsyncID;
+
+   char bridgeMode[8] = {0};
+
+    /* we don't need to resync instances for primary lan in case of bridge-mode */
+    if(syscfg_get(NULL, "bridge_mode", bridgeMode, sizeof(bridgeMode)) != 0)
+    {
+        fprintf(g_fArmConsoleLog, "Inside %s: FATAL - syscfg failed to retrieve bridge_mode, called with arg l3_inst %d, ignoring\n",__FUNCTION__, l3_inst);
+    }
+    else
+    {
+        if(strcmp(bridgeMode,BRIDGE_MODE)==0)
+        {
+            snprintf(l_cPsm_Parameter, sizeof(l_cPsm_Parameter), "%s", PRIMARY_LAN);
+            l_iRet_Val = PSM_VALUE_GET_STRING(l_cPsm_Parameter, l_cpPsm_Get);
+            if(CCSP_SUCCESS != l_iRet_Val || l_cpPsm_Get == NULL)
+            {
+                fprintf(g_fArmConsoleLog, "Inside %s: ERROR psm get failed with code %d while getting parameter:%s, ignoring\n", __FUNCTION__, l_iRet_Val, l_cPsm_Parameter);
+            }
+            else
+            {
+                l_iL3Inst=atoi(l_cpPsm_Get);
+                if(l_iL3Inst == l3_inst) //for brlan0 interface
+                {
+                    fprintf(g_fArmConsoleLog, "RDKB_SYSTEM_BOOT_UP_LOG: Avoiding resync_instance for bridge mode for l3_inst :%d\n", l3_inst);
+                    return;
+                }
+            }
+        }
+    }
 
 	fprintf(g_fArmConsoleLog, "RDKB_SYSTEM_BOOT_UP_LOG : In resync_instance to bring up an instance\n");
 	snprintf(l_cPsm_Parameter, sizeof(l_cPsm_Parameter), "dmsb.l3net.%d.EthLink", l3_inst);

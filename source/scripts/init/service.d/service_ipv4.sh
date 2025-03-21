@@ -426,6 +426,17 @@ resync_all_instances () {
 #args: l3 instance
 resync_instance () {
 
+    # we don't need to resync instances for primary lan in case of bridge-mode
+    bridgeMode=$(syscfg get bridge_mode)
+
+    if [ "$bridgeMode" == 2 ]; then
+        primary_lan_inst=$(psmcli get dmsb.MultiLAN.PrimaryLAN_l3net)
+        if [ "$primary_lan_inst" -eq "$1" ]; then
+            echo_t "RDKB_SYSTEM_BOOT_UP_LOG: Avoiding resync_instance for bridge mode for l3_inst: $1"
+            exit 0
+        fi
+    fi
+
     echo_t "RDKB_SYSTEM_BOOT_UP_LOG : In resync_instance to bring up an instance."
     if [ "$BOX_TYPE" = "XB6" ] && [ "$MANUFACTURE" = "Arris" ]
     then
