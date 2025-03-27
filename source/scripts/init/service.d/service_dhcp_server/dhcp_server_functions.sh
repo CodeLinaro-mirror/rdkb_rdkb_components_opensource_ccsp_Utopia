@@ -988,7 +988,8 @@ fi
        echo "domain-needed" >> $LOCAL_DHCP_CONF
        echo "bogus-priv" >> $LOCAL_DHCP_CONF
 
-       if [ "$BOX_TYPE" = "SR213" ] ; then
+       PARTNER_ID=`syscfg get PartnerID`
+       if [ "$BOX_TYPE" = "SR213" ] || [ "$PARTNER_ID" = "sky-uk" ] ; then
            echo "strict-order" >> $LOCAL_DHCP_CONF
        fi
 
