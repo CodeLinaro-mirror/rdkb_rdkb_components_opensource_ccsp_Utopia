@@ -116,6 +116,7 @@ FACTORY_RESET_REASON=false
 HOTSPOT_BLOB="/nvram/hotspot_blob"
 HOTSPOT_JSON="/nvram/hotspot.json"
 MWO_PATH="/nvram/mwo"
+CHANNEL_KEEPOUT_PATH="/nvram/mesh"
 
 ENCRYPT_SYSCFG=false
 if [ "$MODEL_NUM" = "VTER11QEL" ]; then
@@ -296,6 +297,9 @@ fi
    fi
    if [ -f /nvram/device_profile.json ]; then
       rm -f /nvram/device_profile.json
+   fi
+   if [ -e "$CHANNEL_KEEPOUT_PATH" ]; then
+      rm -rf $CHANNEL_KEEPOUT_PATH
    fi
    rm -f /nvram/partners_defaults.json 
    rm -f /nvram/bootstrap.json

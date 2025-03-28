@@ -124,6 +124,7 @@ FR_COUNT_FILE=/nvram/.factory_reset_count
 HOTSPOT_BLOB="/nvram/hotspot_blob"
 HOTSPOT_JSON="/nvram/hotspot.json"
 MWO_PATH="/nvram/mwo"
+CHANNEL_KEEPOUT_PATH="/nvram/mesh"
 
 if [ -d $SYSCFG_ENCRYPTED_PATH ]; then
     if [ ! -d $SYSCFG_PERSISTENT_PATH ]; then
@@ -238,6 +239,9 @@ fi
    fi
    if [ -f /nvram/device_profile.json ]; then
       rm -f /nvram/device_profile.json
+   fi
+   if [ -e "$CHANNEL_KEEPOUT_PATH" ]; then
+      rm -rf $CHANNEL_KEEPOUT_PATH
    fi
    rm -f /nvram/.keys/*
    rm -f /nvram/ble-enabled
