@@ -204,6 +204,11 @@ service_start ()
               fi
       fi
 
+      if [ "$BOX_TYPE" == "SCER11BEL" ] && [ "$ntpHealthCheck" == "true" ]; then
+          # Add syncing the timeoffset everyday at 01:00 AM
+          echo "0 1 * * * /etc/sky/sync_timeoffset.sh" >> $CRONTAB_FILE
+      fi
+
       # Logging current chain mask value of 2G - runs on 1st minute of every 12th hour - only for 3941 box
       if [ -n "$(echo "$MODEL_NUM" | grep 3941)" ]; then
          echo "1 */12 * * *  rpcclient 169.254.101.2 \"/etc/ath/CurrentChainMask_Logging.sh\"" >> $CRONTAB_FILE
