@@ -68,7 +68,10 @@
 
 #define PARTNERS_INFO_FILE                            "/nvram/partners_defaults.json"
 #define PARTNERS_INFO_FILE_ETC                        "/etc/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE                           "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE                           "/opt/secure/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE_BACKUP                    "/nvram/bootstrap.json"
+#define CLEAR_TRACK_FILE                              "/nvram/ClearUnencryptedData_flags"
+#define NVRAM_BOOTSTRAP_CLEARED                       (1 << 0)
 #define VERSION_TXT_FILE                              "/version.txt"
 #define PARTNERID_FILE                                "/nvram/.partner_ID"
 #define PARTNER_DEFAULT_APPLY_FILE                    "/nvram/.apply_partner_defaults"
@@ -994,6 +997,19 @@ static void ValidateAndUpdatePartnerVersionParam (cJSON *root_etc_json, cJSON *r
         if(out)
         {
             writeToJson(out, BOOTSTRAP_INFO_FILE);
+            //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+            unsigned int flags = 0;
+            FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+            if (fp)
+            {
+                fscanf(fp, "%u", &flags);
+                fclose(fp);
+            }
+            if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+            {
+                APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+                writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+            }
             free(out);
             out = NULL;
         }
@@ -1807,6 +1823,19 @@ int init_bootstrap_json (char *partner_nvram_obj, char *partner_etc_obj, char *P
       {
          //APPLY_PRINT("out1 = %s\n", out);
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out);
          out = NULL;
       }
@@ -1829,7 +1858,7 @@ int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_ob
       partnerobj_nvram_bs = cJSON_GetObjectItem(root_nvram_bs_json, PartnerID);
    }
 
-   /* The below block of code identifies any unknown/wrong objects in nvram/bootstrap.json and removes them */
+   /* The below block of code identifies any unknown/wrong objects in /opt/secure/bootstrap.json and removes them */
    if (!root_nvram_bs_json || !partnerobj_nvram_bs)
    {
       APPLY_PRINT("json parse error for bootstrap.json\n");
@@ -1863,6 +1892,19 @@ int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_ob
       if(out)
       {
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out);
          out = NULL;
       }
@@ -2115,7 +2157,7 @@ int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_ob
             if(etc_key == NULL &&
                !(overrideObj && cJSON_HasObjectItem(overrideObj, key)))
             {
-               APPLY_PRINT("Delete parameter %s from /nvram/bootstrap.json\n", key);
+               APPLY_PRINT("Delete parameter %s from /opt/secure/bootstrap.json\n", key);
                //key=cJSON_GetArrayItem(subitem_nvram_bs,iCount);
                cJSON_DeleteItemFromArray(subitem_nvram_bs,iCount);
                //Decrement the count when an element is deleted
@@ -2129,6 +2171,19 @@ int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner_etc_ob
       {
          //printf("compare out = %s\n", out);
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out); // mrmz cJSON_free ?
          out = NULL;
       }

@@ -62,7 +62,10 @@
 #include <telemetry_busmessage_sender.h>
 #define PARTNERS_INFO_FILE  							"/nvram/partners_defaults.json"
 #define PARTNERS_INFO_FILE_ETC                                                 "/etc/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE                                                    "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE                                                    "/opt/secure/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE_BACKUP                                             "/nvram/bootstrap.json"
+#define CLEAR_TRACK_FILE                                                       "/nvram/ClearUnencryptedData_flags"
+#define NVRAM_BOOTSTRAP_CLEARED                                                (1 << 0)
 #define VERSION_TXT_FILE							"/version.txt"
 #define PARTNERID_FILE  								"/nvram/.partner_ID"
 #define PARTNER_DEFAULT_APPLY_FILE  					"/nvram/.apply_partner_defaults"
@@ -956,6 +959,19 @@ static void ValidateAndUpdatePartnerVersionParam (cJSON *root_etc_json, cJSON *r
         if(out)
         {
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out);
          out = NULL;
         }
@@ -1824,6 +1840,19 @@ static int init_bootstrap_json (char *partner_nvram_obj, char *partner_etc_obj, 
       {
          //APPLY_PRINT("out1 = %s\n", out);
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out);
          out = NULL;
       }
@@ -1846,7 +1875,7 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
       partnerobj_nvram_bs = cJSON_GetObjectItem(root_nvram_bs_json,PartnerID);
    }
 
-   /* The below block of code identifies any unknown/wrong objects in nvram/bootstrap.json and removes them */
+   /* The below block of code identifies any unknown/wrong objects in /opt/secure/bootstrap.json and removes them */
    if (!root_nvram_bs_json || !partnerobj_nvram_bs)
    {
       APPLY_PRINT("json parse error for bootstrap.json\n");
@@ -1880,6 +1909,19 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
       if(out)
       {
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out);
          out = NULL;
       }
@@ -2089,7 +2131,7 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
             if(etc_key == NULL &&
                !(overrideObj && cJSON_HasObjectItem(overrideObj, key)))
             {
-               APPLY_PRINT("Delete parameter %s from /nvram/bootstrap.json\n", key);
+               APPLY_PRINT("Delete parameter %s from /opt/secure/bootstrap.json\n", key);
                //key=cJSON_GetArrayItem(subitem_nvram_bs,iCount);
                cJSON_DeleteItemFromArray(subitem_nvram_bs,iCount);
                //Decrement the count when an element is deleted
@@ -2103,6 +2145,19 @@ STATIC int compare_partner_json_param (char *partner_nvram_bs_obj, char *partner
       {
          //printf("compare out = %s\n", out);
          writeToJson(out, BOOTSTRAP_INFO_FILE);
+         //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+         unsigned int flags = 0;
+         FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+         if (fp)
+         {
+             fscanf(fp, "%u", &flags);
+             fclose(fp);
+         }
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+             APPLY_PRINT("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+             writeToJson(out, BOOTSTRAP_INFO_FILE_BACKUP);
+         }
          free(out);
          out = NULL;
       }
@@ -3212,28 +3267,70 @@ static void getPartnerIdWithRetry(char* buf, char* PartnerID)
 
    APPLY_PRINT("%s - PartnerID :%s\n", __FUNCTION__, PartnerID );
 
+   unsigned int flags = 0;
+   FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+   if (fp)
+   {
+      fscanf(fp, "%u", &flags);
+      fclose(fp);
+   }
+
    ptr_etc_json = json_file_parse( PARTNERS_INFO_FILE_ETC );
    if ( ptr_etc_json )
    {
       ptr_nvram_bs_json = json_file_parse( BOOTSTRAP_INFO_FILE );
       if ( ptr_nvram_bs_json == NULL )
       {
-         ptr_nvram_json = json_file_parse( PARTNERS_INFO_FILE ); // nvram/partners_defaults.json can be removed after a few sprints.
-         init_bootstrap_json( ptr_nvram_json, ptr_etc_json, PartnerID );
-         if ( ptr_nvram_json == NULL )
+         if (access(BOOTSTRAP_INFO_FILE_BACKUP, F_OK) == 0)
          {
-            APPLY_PRINT("cp %s %s", PARTNERS_INFO_FILE_ETC, PARTNERS_INFO_FILE);
-            v_secure_system("cp "PARTNERS_INFO_FILE_ETC " " PARTNERS_INFO_FILE);
-
-            //Need to touch /tmp/.apply_partner_defaults_psm for PSM migration handling
-            creat(PARTNER_DEFAULT_MIGRATE_PSM,S_IRUSR |S_IWUSR |S_IRGRP |S_IROTH); // FIX: RDKB-20566 to handle migration
+            //If backup file exists, compare and copy it to /opt/secure/bootstrap.json
+            if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+            {
+               char *ptr_nvram_bkup_json = NULL;
+               ptr_nvram_bkup_json = json_file_parse(BOOTSTRAP_INFO_FILE_BACKUP);
+               if (ptr_nvram_bkup_json)
+               {
+                  APPLY_PRINT("%s-%d Comparing %s and %s\n", __FUNCTION__, __LINE__, BOOTSTRAP_INFO_FILE_BACKUP, PARTNERS_INFO_FILE_ETC);
+                  compare_partner_json_param( ptr_nvram_bkup_json, ptr_etc_json, PartnerID );
+                  free(ptr_nvram_bkup_json);
+               }
+            }
          }
          else
-            free( ptr_nvram_json );
+         {
+            ptr_nvram_json = json_file_parse( PARTNERS_INFO_FILE ); // nvram/partners_defaults.json can be removed after a few sprints.
+            init_bootstrap_json( ptr_nvram_json, ptr_etc_json, PartnerID );
+            if ( ptr_nvram_json == NULL )
+            {
+               APPLY_PRINT("cp %s %s", PARTNERS_INFO_FILE_ETC, PARTNERS_INFO_FILE);
+               v_secure_system("cp "PARTNERS_INFO_FILE_ETC " " PARTNERS_INFO_FILE);
+
+               //Need to touch /tmp/.apply_partner_defaults_psm for PSM migration handling
+               creat(PARTNER_DEFAULT_MIGRATE_PSM,S_IRUSR |S_IWUSR |S_IRGRP |S_IROTH); // FIX: RDKB-20566 to handle migration
+            }
+            else
+               free( ptr_nvram_json );
+         }
       }
       else
       {
-         compare_partner_json_param( ptr_nvram_bs_json, ptr_etc_json, PartnerID );
+         //If backup file exist, then compare with /etc/partners_defaults.json and update /opt/secure/bootstrap.json
+         if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+         {
+            char *ptr_nvram_bkup_json = NULL;
+            ptr_nvram_bkup_json = json_file_parse(BOOTSTRAP_INFO_FILE_BACKUP);
+            if (ptr_nvram_bkup_json)
+            {
+               APPLY_PRINT("%s-%d - Comparing %s and %s\n", __FUNCTION__, __LINE__, BOOTSTRAP_INFO_FILE_BACKUP, PARTNERS_INFO_FILE_ETC);
+               compare_partner_json_param( ptr_nvram_bkup_json, ptr_etc_json, PartnerID );
+               free(ptr_nvram_bkup_json);
+            }
+         }
+         else
+         {
+            APPLY_PRINT("%s-%d - Comparing %s and %s\n", __FUNCTION__, __LINE__, BOOTSTRAP_INFO_FILE, PARTNERS_INFO_FILE_ETC);
+            compare_partner_json_param( ptr_nvram_bs_json, ptr_etc_json, PartnerID );
+         }
          free( ptr_nvram_bs_json );
       }
       free( ptr_etc_json );

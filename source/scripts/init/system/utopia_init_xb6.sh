@@ -471,6 +471,7 @@ fi
    rm -f /nvram/server-duid
    rm -f /nvram/partners_defaults.json 
    rm -f /nvram/bootstrap.json
+   rm -f /opt/secure/bootstrap.json
    rm -f /opt/secure/RFC/tr181store.json
    rm -f /opt/secure/Blocklist_file.txt
    if [ -f /nvram/.CMchange_reboot_count ];then

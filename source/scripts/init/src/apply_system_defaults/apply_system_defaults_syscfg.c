@@ -48,7 +48,7 @@
 
 #define PARTNERS_INFO_FILE                                "/nvram/partners_defaults.json"
 #define PARTNERS_INFO_FILE_ETC                            "/etc/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE                               "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE                               "/opt/secure/bootstrap.json"
 //#define VERSION_TXT_FILE                                "/version.txt"
 #define PARTNERID_FILE                                    "/nvram/.partner_ID"
 #define PARTNER_DEFAULT_APPLY_FILE                        "/nvram/.apply_partner_defaults"
