@@ -99,7 +99,7 @@ static const char* const service_routed_component_id = "ccsp.routed";
 #define RIPD_PID_FILE   "/var/ripd.pid"
 #define ZEBRA_CONF_FILE "/var/zebra.conf"
 
-#if defined (_BWG_PRODUCT_REQ_) || defined (ARRIS_XB3_PLATFORM_CHANGES)
+#if defined (_BWG_PRODUCT_REQ_)
 #define RIPD_CONF_FILE  "/var/ripd.conf"
 #else
 #define RIPD_CONF_FILE  "/etc/ripd.conf"
