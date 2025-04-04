@@ -304,8 +304,11 @@ set_ntp_driftsync_status ()
       do
       #Check if ntpq -c rv returns any value
         ntpq_value=`ntpq -c rv`
+        if [ -z "$ntpq_value" ]; then
+            ntpq_value=`ntpq -4 -c rv`
+        fi
         if [ -n "$ntpq_value" ]; then
-            sync_status=`ntpq -c rv | grep "stratum=16"`
+            sync_status=`"$ntpq_value" | grep "stratum=16"`
             if [ -z "$sync_status" ]; then
             echo_t "SERVICE_NTPD : ntpd time synced , setting the status" >> $NTPD_LOG_NAME
             syscfg set ntp_status 3
@@ -327,6 +330,13 @@ set_ntp_driftsync_status ()
                 retry=`expr $retry + 1`
                 sleep 60
             fi
+        elif [ "$retry" -gt "20" ]; then
+                echo_t "Time is not synced after 20 min retry. Breaking loop" >> $NTPD_LOG_NAME
+                break
+        else
+            echo_t "SERVICE_NTPD : Time not yet synced, Sleeping. Retry:$retry" >> $NTPD_LOG_NAME
+            retry=`expr $retry + 1`
+            sleep 60
         fi
       done
    else
