@@ -329,6 +329,7 @@ int service_stop(int mode)
 #endif
             sysevent_set(sysevent_fd, sysevent_token, "lan-stop", "", 0);
             sysevent_set(sysevent_fd, sysevent_token, "ipv4-down", "5", 0);
+            runCommandInShellBlocking("systemctl stop CcspLMLite.service");
         }
         break;
         default:
@@ -450,6 +451,7 @@ int service_start(int mode)
                 snprintf(buf,sizeof(buf),"ip addr flush %s", XHS_BRIDGE_NAME);
             }
             runCommandInShellBlocking(buf);
+            runCommandInShellBlocking("systemctl restart CcspLMLite.service");
 
         }
         break;
