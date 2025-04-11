@@ -197,6 +197,18 @@ AC_ARG_ENABLE([ddns_binary_client_support],
 esac],[ddns_binary_client_support=false])
 AM_CONDITIONAL([DDNS_BINARY_CLIENT_SUPPORT], [test x$ddns_binary_client_support = xtrue])
 
+AC_ARG_ENABLE([potd],
+        AS_HELP_STRING([--enable-potd],[Enable PotD (Password of the Day)]),
+        [
+          case "${enableval}" in
+            yes) enable_potd=true ;;
+            no) enable_potd=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-potd]) ;;
+          esac
+           ],
+        [enable_potd=true])
+AM_CONDITIONAL([ENABLE_POTD_SERVICE], [test x$enable_potd = xtrue])
+
 AM_COND_IF( [DDNS_BINARY_CLIENT_SUPPORT], [
 AC_CONFIG_FILES([
    source/service_ddns/Makefile

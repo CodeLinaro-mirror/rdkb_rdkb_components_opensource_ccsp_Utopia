@@ -58,13 +58,15 @@ bin_PROGRAMS = \
     15_ssh_server \
     20_routing \
     25_crond \
-    26_potd \
     33_cosa
 
 if FEATURE_RDKB_EXTENDER
 bin_PROGRAMS += 02_devicemode
 endif
 
+if ENABLE_POTD_SERVICE
+bin_PROGRAMS += 26_potd
+endif
 
 01_system_SOURCES = 01_system.c
 02_bridge_SOURCES = 02_bridge.c
@@ -113,9 +115,11 @@ endif
 20_gwreset_SOURCES = 20_gwreset.c
 20_routing_SOURCES = 20_routing.c
 25_crond_SOURCES = 25_crond.c
-26_potd_SOURCES = 26_potd.c
 33_cosa_SOURCES = 33_cosa.c
 
 if FEATURE_RDKB_EXTENDER
 02_devicemode_SOURCES = 02_devicemode.c
+endif
+if ENABLE_POTD_SERVICE
+26_potd_SOURCES = 26_potd.c
 endif
