@@ -12541,6 +12541,13 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
        #if !defined(_CBR_PRODUCT_REQ_) && !defined (_BWG_PRODUCT_REQ_) && !defined (_CBR2_PRODUCT_REQ_)
            fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p tcp -m multiport --dport 22,23,80,443 -j DROP\n",XHS_IF_NAME);
            fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p tcp -m multiport --dport 22,23,80,443 -j DROP\n",LNF_IF_NAME);
+	   /* RDKB-57186 SNMP drop to XHS and LnF */
+           fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan113 -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan112 -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan113 -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan112 -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
        #endif
        fprintf(filter_fp, "-A INPUT -p tcp -i privbr --match multiport  --dport 80,443 -j ACCEPT\n");
    #endif
@@ -12949,6 +12956,9 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
 #endif /*_HUB4_PRODUCT_REQ_*/
    }
    fprintf(filter_fp, "-A general_input -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", lan_ifname);
+   /* RDKB-57186 SNMP drop to XHS and LnF */
+   fprintf(filter_fp, "-A general_input -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", XHS_IF_NAME);
+   fprintf(filter_fp, "-A general_input -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", LNF_IF_NAME);
 #if defined (MULTILAN_FEATURE)
    fprintf(filter_fp, "-A lan2self -j lan2self_by_wanip\n");
 #else
@@ -14111,6 +14121,9 @@ static int prepare_disabled_ipv4_firewall(FILE *raw_fp, FILE *mangle_fp, FILE *n
    fprintf(filter_fp, "-A LOG_SSH_DROP -j DROP\n");
 
    fprintf(filter_fp, "-A INPUT -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", cmdiag_ifname); //SNMP filter
+   /* RDKB-57186 SNMP drop to XHS and LnF */
+   fprintf(filter_fp, "-A INPUT -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", XHS_IF_NAME);
+   fprintf(filter_fp, "-A INPUT -i %s -p udp -m udp --dport 161 -j xlog_drop_lan2self\n", LNF_IF_NAME);
 
    fprintf(filter_fp,"-A INPUT -p tcp -i brlan1 --dport 22 -j DROP\n");
    fprintf(filter_fp,"-A INPUT -p tcp -i br106 --dport 22 -j DROP\n");
@@ -14224,6 +14237,13 @@ static int prepare_disabled_ipv4_firewall(FILE *raw_fp, FILE *mangle_fp, FILE *n
         #if !defined(_CBR_PRODUCT_REQ_) && !defined (_BWG_PRODUCT_REQ_) && !defined (_CBR2_PRODUCT_REQ_)
            fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p tcp -m multiport --dport 22,23,80,443 -j DROP\n",XHS_IF_NAME);
            fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p tcp -m multiport --dport 22,23,80,443 -j DROP\n",LNF_IF_NAME);
+	   /* RDKB-57186 SNMP drop to XHS and LnF */
+           fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o privbr -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+	   fprintf(filter_fp, "-A FORWARD -i %s -o brlan113 -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan112 -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan113 -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
+           fprintf(filter_fp, "-A FORWARD -i %s -o brlan112 -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
        #endif
        fprintf(filter_fp, "-A INPUT -p tcp -i privbr --match multiport  --dport 80,443 -j ACCEPT\n");
        fprintf(filter_fp, "-I FORWARD -d 172.31.255.0/24 -j DROP\n");
@@ -15306,6 +15326,10 @@ static void do_ipv6_filter_table(FILE *fp){
    fprintf(fp, "-A INPUT -i %s -m state --state ESTABLISHED,RELATED -p udp --dport 123 -j ACCEPT \n", get_current_wan_ifname());
    fprintf(fp, "-A INPUT -i %s  -m state --state NEW -p udp --dport 123 -j DROP \n",get_current_wan_ifname());
 
+   /* RDKB-57186 SNMP drop to XHS and LnF */
+   fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 161 -j DROP\n", XHS_IF_NAME);
+   fprintf(fp, "-A INPUT -i %s -p udp -m udp --dport 161 -j DROP\n", LNF_IF_NAME);
+
    // Video Analytics Firewall rule to allow port 58081 only from LAN interface
    do_OpenVideoAnalyticsPort (fp);
 
@@ -15357,6 +15381,13 @@ static void do_ipv6_filter_table(FILE *fp){
         #if !defined(_CBR_PRODUCT_REQ_) && !defined (_BWG_PRODUCT_REQ_) && !defined (_CBR2_PRODUCT_REQ_)
            fprintf(fp, "-A FORWARD -i %s -o privbr -p tcp -m multiport --dport 22,23,80,443 -j DROP\n",XHS_IF_NAME);
            fprintf(fp, "-A FORWARD -i %s -o privbr -p tcp -m multiport --dport 22,23,80,443 -j DROP\n",LNF_IF_NAME);
+	   /* RDKB-57186 SNMP drop to XHS and LnF */
+           fprintf(fp, "-A FORWARD -i %s -o privbr -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
+           fprintf(fp, "-A FORWARD -i %s -o privbr -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+	   fprintf(fp, "-A FORWARD -i %s -o brlan113 -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(fp, "-A FORWARD -i %s -o brlan112 -p udp --dport 161 -j DROP\n",LNF_IF_NAME);
+           fprintf(fp, "-A FORWARD -i %s -o brlan113 -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
+           fprintf(fp, "-A FORWARD -i %s -o brlan112 -p udp --dport 161 -j DROP\n",XHS_IF_NAME);
        #endif
        fprintf(fp, "-A INPUT -p tcp -i privbr --match multiport  --dport 80,443 -j ACCEPT\n");
        
