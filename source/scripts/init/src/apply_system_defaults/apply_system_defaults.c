@@ -1384,6 +1384,13 @@ STATIC void addInSysCfgdDB (char *key, char *value)
       set_syscfg_partner_values( value,"XHS_SSIDprefix" );
       IsPSMMigrationNeeded = 1;
    }
+   if ( 0 == strcmp ( key, "Default_VoIP_Configuration_FileName") )
+   {
+      if ( 0 == IsValuePresentinSyscfgDB( "Default_VoIP_Configuration_FileName" ) )
+      {
+         set_syscfg_partner_values( value,"Default_VoIP_Configuration_FileName" );
+      }
+   }
 
 #if defined (SPEED_BOOST_SUPPORTED)
 
@@ -1631,6 +1638,10 @@ STATIC void updateSysCfgdDB (char *key, char *value)
    if ( 0 == strcmp ( key, "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.RDKB_UIBranding.AllowEthernetWAN") )
    {
          set_syscfg_partner_values( value,"AllowEthernetWAN" );
+   }
+   if ( 0 == strcmp ( key, "Default_VoIP_Configuration_FileName") )
+   {
+         set_syscfg_partner_values( value,"Default_VoIP_Configuration_FileName" );
    }
 
 #if defined (SPEED_BOOST_SUPPORTED)
@@ -2185,7 +2196,8 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
         *initialOutputMark = NULL,
         *startupipmode = NULL,
         *pridhcpoption = NULL,
-        *secdhcpoption = NULL;
+        *secdhcpoption = NULL,
+        *voiceDefaultConfigFile = NULL;
     int	    isNeedToApplyPartnersDefault = 1;
     int	    isNeedToApplyPartnersPSMDefault = 0;
     char    ntpServer[64]     = {0};
@@ -2848,6 +2860,22 @@ static int apply_partnerId_default_values (char *data, char *PartnerID)
 				        {
 				            APPLY_PRINT("%s - Default Value of StartupIPMode is NULL\n", __FUNCTION__ );
 				        }
+
+
+               paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Default_VoIP_Configuration_FileName"), "ActiveValue");
+               if ( paramObjVal != NULL )
+               {
+                  voiceDefaultConfigFile = paramObjVal->valuestring;
+                  if(voiceDefaultConfigFile[0] !='\0')
+                  {
+                     set_syscfg_partner_values(voiceDefaultConfigFile,"Default_VoIP_Configuration_FileName");
+                     voiceDefaultConfigFile = NULL;
+                  }
+               }
+               else
+               {
+                  APPLY_PRINT("%s - Default Value of Default_VoIP_Configuration_FileName is NULL\n", __FUNCTION__ );
+               }
 
 paramObjVal = cJSON_GetObjectItem(cJSON_GetObjectItem( partnerObj, "Device.X_RDKCENTRAL-COM_EthernetWAN_MTA.IPv4PrimaryDhcpServerOptions"), "ActiveValue");
 if ( paramObjVal != NULL )
