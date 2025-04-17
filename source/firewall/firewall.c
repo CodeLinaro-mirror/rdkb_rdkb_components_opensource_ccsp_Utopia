@@ -11888,6 +11888,7 @@ static void do_ipv4_UIoverWAN_filter(FILE* fp) {
 /*
  * Rules for secure backhaul bridge
  */
+#ifdef SECURE_BHAUL
 #if defined (INTEL_PUMA7) || ((defined (_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_COSA_QCA_ARM_)) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)) || defined (_CBR2_PRODUCT_REQ_)
 static void do_secure_backhaul(FILE *filter_fp)
 {
@@ -11912,6 +11913,7 @@ static void do_secure_backhaul(FILE *filter_fp)
     fprintf(filter_fp, "-A SECURE_BHAUL -j DROP\n");
     FIREWALL_DEBUG("Exiting do_secure_backhaul\n");
 }
+#endif
 #endif
 /*
  *  Procedure     : prepare_subtables
@@ -12796,7 +12798,9 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
    {
       fprintf(filter_fp, "-I FORWARD 2 -i br403 -o %s -j ACCEPT\n", current_wan_ifname);
       fprintf(filter_fp, "-I FORWARD 3 -i %s -o br403 -j ACCEPT\n", current_wan_ifname);
+#ifdef SECURE_BHAUL
       do_secure_backhaul(filter_fp);
+#endif
    }
 #endif
 
