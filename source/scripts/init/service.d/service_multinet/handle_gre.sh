@@ -271,7 +271,7 @@ create_tunnel () {
 	  touch /tmp/.gre_flowmanager_enable
     fi
     if [ "$BOX_TYPE" = "VNTXER5" ] || [ "$BOX_TYPE" = "SCER11BEL" ]; then
-	    INST=`psmcli getallinst dmsb.l2net. | tr -d \n | sed ' s/./& /g'`
+	    INST=`psmcli getallinst dmsb.l2net.`
 	    for i in $INST; do
 		    GRE=`psmcli get dmsb.l2net.$i.Members.Gre | grep $2`
 		    if [ "$GRE" != "" ]; then
@@ -304,7 +304,7 @@ destroy_tunnel () {
    fi
     echo "Destroying tunnel... remote"
     if [ "$BOX_TYPE" = "VNTXER5" ] || [ "$BOX_TYPE" = "SCER11BEL" ]; then
-	    INST=`psmcli getallinst dmsb.l2net. | tr -d \n | sed ' s/./& /g'`
+	    INST=`psmcli getallinst dmsb.l2net.`
 	    for i in $INST; do
 		    STAT=`sysevent get gre_"$i"_inst`
 		    if [ "$STAT" != "1" ] ; then
