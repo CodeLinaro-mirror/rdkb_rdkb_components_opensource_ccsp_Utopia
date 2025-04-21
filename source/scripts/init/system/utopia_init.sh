@@ -122,7 +122,7 @@ MWO_PATH="/nvram/mwo"
 CHANNEL_KEEPOUT_PATH="/nvram/mesh"
 
 ENCRYPT_SYSCFG=false
-if [ "$MODEL_NUM" = "VTER11QEL" ] || [ "$MODEL_NUM" = "SCER11BEL" ]; then
+if [ "$MODEL_NUM" = "VTER11QEL" ]; then
    ENCRYPT_SYSCFG=true
 fi
 
