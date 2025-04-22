@@ -16511,25 +16511,46 @@ void RmConntrackEntry(char *IPaddr)
 int CleanIPConntrack(char *physAddress)
 {
 #ifdef CORE_NET_LIB
-    struct neighbour_info neigh_data;
-    libnet_status status;
+    char *mac_filter = NULL;
+    char *if_filter = NULL;
+    int af_filter = 0;
     char output[INET_ADDRSTRLEN] = {0};
-    status = neighbour_get_list(&neigh_data);
+
+    if (physAddress != NULL) {
+       mac_filter = strdup(physAddress);
+       if (!mac_filter) {
+          FIREWALL_DEBUG("CleanIPConntrack: Failed to copy MAC string\n");
+          return -1;
+       }
+    }
+    else{
+       FIREWALL_DEBUG("CleanIPConntrack: Input MAC address is NULL\n");
+       return -1;
+    }
+
+    struct neighbour_info *neigh_data =  init_neighbour_info();
+    if (!neigh_data) {
+       FIREWALL_DEBUG("CleanIPConntrack: Failed to initialize neighbor information structure\n");
+       free(mac_filter);
+       return -1;
+    }
+    libnet_status status = neighbour_get_list(neigh_data, mac_filter, if_filter, af_filter);
     if (status != CNL_STATUS_SUCCESS) {
         FIREWALL_DEBUG("Failed to list neighbours for %s\n" COMMA physAddress);
+        free(mac_filter);
+        neighbour_free_neigh(neigh_data);
         return -1;
     }
     FIREWALL_DEBUG("Successfully listed neighbours for %s\n" COMMA physAddress);
-    for (int i = 0; i < neigh_data.neigh_count; i++) {
-        if (strcasecmp(neigh_data.neigh_arr[i].mac, physAddress) == 0) {
-            snprintf(output, sizeof(output), "%s", neigh_data.neigh_arr[i].local);
-            printf("Output: neighbour list %s\n",output);
-       	    if (!strstr(output, "fe80:")) {
-               RmConntrackEntry(output);
-               }
-        }
+    for (int i = 0; i < neigh_data->neigh_count; i++) {
+         snprintf(output, sizeof(output), "%s", neigh_data->neigh_arr[i].local);
+         printf("Output: neighbour list %s\n",output);
+            if (!strstr(output, "fe80:")) {
+            RmConntrackEntry(output);
+            }
     }
-    neighbour_free_neigh(&neigh_data);
+    neighbour_free_neigh(neigh_data);
+    free(mac_filter);
 #else
     FILE *fp = NULL;
     char output[50] = {0};
