@@ -874,7 +874,7 @@ if [ "$eth_wan_enable" = "true" ] && [ -f $TR69TLVFILE ]; then
   sed -i '/eRT.com.cisco.spvtg.ccsp.tr069pa.Device.ManagementServer.URL.Value/d' $PSM_CUR_XML_CONFIG_FILE_NAME
 fi
 
-if [ "$MANUFACTURE" = "Technicolor" ]; then
+if [ "$MANUFACTURE" = "Technicolor" ] || [ "$MANUFACTURE" = "Sercomm" ]; then
 	/bin/sh -c '(/usr/sbin/tch_traceKernelPanic.sh)'
 fi
 
