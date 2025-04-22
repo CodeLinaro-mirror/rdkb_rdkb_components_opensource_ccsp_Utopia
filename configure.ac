@@ -214,6 +214,17 @@ AC_CONFIG_FILES([
    source/service_ddns/Makefile
 ])] )
 
+AC_ARG_ENABLE([hotspot],
+        AS_HELP_STRING([--enable-hotspot],[Enable HotSpot]),
+        [
+          case "${enableval}" in
+            yes) enable_hotspot=true ;;
+            no) enable_hotspot=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-hotspot]) ;;
+          esac
+           ],
+        [enable_hotspot=true])
+AM_CONDITIONAL([ENABLE_HOTSPOT_SERVICE], [test x$enable_hotspot = xtrue])
 
 AC_CONFIG_FILES(
 	Makefile

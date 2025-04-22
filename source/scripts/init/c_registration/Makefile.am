@@ -52,7 +52,6 @@ bin_PROGRAMS = \
     15_dhcpv6_client \
     15_dhcpv6_server \
     15_dynamic_dns \
-    15_hotspot \
     15_igd \
     15_misc \
     15_ssh_server \
@@ -66,6 +65,10 @@ endif
 
 if ENABLE_POTD_SERVICE
 bin_PROGRAMS += 26_potd
+endif
+
+if ENABLE_HOTSPOT_SERVICE
+bin_PROGRAMS += 15_hotspot
 endif
 
 01_system_SOURCES = 01_system.c
@@ -102,7 +105,6 @@ endif
 15_dnsforwarder_SOURCES = 15_dnsforwarder.c
 15_dynamic_dns_SOURCES = 15_dynamic_dns.c
 15_ftp_server_SOURCES = 15_ftp_server.c
-15_hotspot_SOURCES = 15_hotspot.c
 15_http_server_SOURCES = 15_http_server.c
 15_igd_SOURCES = 15_igd.c
 15_misc_SOURCES = 15_misc.c
@@ -122,4 +124,7 @@ if FEATURE_RDKB_EXTENDER
 endif
 if ENABLE_POTD_SERVICE
 26_potd_SOURCES = 26_potd.c
+endif
+if ENABLE_HOTSPOT_SERVICE
+15_hotspot_SOURCES = 15_hotspot.c
 endif
