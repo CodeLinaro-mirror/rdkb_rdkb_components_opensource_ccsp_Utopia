@@ -111,4 +111,13 @@ int isExtProfile();
 void updateManageWiFiRules(void * busHandle, char * pCurWanInterface, FILE * filterFp);
 bool isManageWiFiEnabled(void);
 #endif/*WIFI_MANAGE_SUPPORTED*/
+
+#if defined (AMENITIES_NETWORK_ENABLED)
+#define AMENITY_WIFI_BRIDGE_NAME "dmsb.l2net.%s.Name"
+#define VAP_NAME_2G_INDEX "dmsb.MultiLAN.AmenityNetwork_2g_l3net"
+#define VAP_NAME_5G_INDEX "dmsb.MultiLAN.AmenityNetwork_5g_l3net"
+#define VAP_NAME_6G_INDEX "dmsb.MultiLAN.AmenityNetwork_6g_l3net"
+void updateAmenityNetworkRules(FILE *filter_fp , FILE *mangle_fp,int iptype);
+#endif /*AMENITIES_NETWORK_ENABLED*/
+
 #endif

@@ -681,6 +681,7 @@ static char ecm_wan_ifname[20];
 static char emta_wan_ifname[20];
 static char eth_wan_enabled[20];
 static BOOL bEthWANEnable = FALSE;
+static BOOL bAmenityEnabled = FALSE;
 static char devicePartnerId[255] = {'\0'};
 #ifdef WAN_FAILOVER_SUPPORTED
 static char dev_type[20];
@@ -2514,7 +2515,13 @@ static int prepare_globals_from_configuration(void)
    syscfg_get(NULL, "eth_wan_enabled", eth_wan_enabled, sizeof(eth_wan_enabled));
    if (0 == strcmp("true", eth_wan_enabled))
       bEthWANEnable = TRUE;
-    
+
+#if defined (AMENITIES_NETWORK_ENABLED)
+   char cAmenityReceived [BUFLEN_8] = {0};
+   syscfg_get( NULL, "Is_Amenity_Received", cAmenityReceived, BUFLEN_8);
+   if(0 == strncmp(cAmenityReceived, "true",4))
+       bAmenityEnabled = TRUE;
+#endif
    memset(current_wan_ip6_addr, 0, sizeof(current_wan_ip6_addr)); 
    sysevent_get(sysevent_fd, sysevent_token, "tr_erouter0_dhcpv6_client_v6addr", current_wan_ip6_addr, sizeof(current_wan_ip6_addr));
 
@@ -3256,6 +3263,73 @@ static int prepare_globals_from_configuration(void)
     //       FIREWALL_DEBUG("Exiting do_logs\n");       
    return(0);
 }
+
+
+#if defined (AMENITIES_NETWORK_ENABLED)
+void updateAmenityNetworkRules(FILE *filter_fp , FILE *mangle_fp , int iptype )
+{
+   char query[MAX_QUERY];
+   int  rc, bridgecount;
+   char param[BUFLEN_64] = {'\0'};
+   char bridgename[BUFLEN_8] = {'\0'};
+   char bridgeindex[BUFLEN_8] = {'\0'};
+   const char *amenityBridgeIdx[] = {VAP_NAME_2G_INDEX , VAP_NAME_5G_INDEX , VAP_NAME_6G_INDEX} ;
+   query[0] = '\0';
+   FIREWALL_DEBUG("Entering updateAmenityNetworkRules\n");
+   rc = syscfg_get(NULL, "Amenity_Bridge_Count", query, sizeof(query));
+   if (0 != rc || '\0' == query[0]) {
+      goto AmenityExit;
+   } else {
+      bridgecount = atoi(query);
+      if (0 == bridgecount) {
+         goto AmenityExit;
+      }
+   }
+   for(int idx = 0 ; idx < bridgecount ; idx++)
+   {
+      char namespace[BUFLEN_64] = {'\0'};
+      snprintf(query, sizeof(query), "Amenity_Bridge_%d", idx);
+      rc = syscfg_get(NULL, query, namespace, sizeof(namespace));
+      if (0 != rc || '\0' == namespace[0]) {
+         continue;
+      } else if ( (0 == strcmp("0", query)) || (0 == strcasecmp("false", query)) ) {
+        FIREWALL_DEBUG("skipping Amenity rule for %s\n" COMMA param);
+        continue;
+      }
+      FIREWALL_DEBUG("Amenity rule for %s\n" COMMA query);
+      psmGet(bus_handle, (char *)amenityBridgeIdx[idx], bridgeindex, sizeof(bridgeindex));
+      if ('\0' == bridgeindex[0])
+      {
+         FIREWALL_DEBUG(" Failed to get %s\n" COMMA amenityBridgeIdx[idx]);
+         goto AmenityExit;
+      }
+      snprintf(param, BUFLEN_64, AMENITY_WIFI_BRIDGE_NAME, bridgeindex );
+      psmGet(bus_handle, param, bridgename, sizeof(bridgename));
+      if ('\0' == bridgename[0])
+      {
+         FIREWALL_DEBUG(" Failed to get %s\n" COMMA param);
+         goto AmenityExit;
+      }
+      FIREWALL_DEBUG(" Applying Amenity network IPv%d rules for %s \n" COMMA iptype COMMA bridgename);
+      if(iptype == AF_INET)
+      {
+         //will be enabling option 82 rules once prod team confirms
+         //fprintf(filter_fp, "-A FORWARD -o %s -p udp --dport=67:68 -j NFQUEUE --queue-bypass --queue-num %d\n", bridgename, idx+1);
+         fprintf(mangle_fp, "-A POSTROUTING -o %s -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1360 \n" , bridgename);
+      }
+      else
+      {
+         // Adding Accept rule for Amenity interface
+         fprintf(filter_fp, "-A INPUT -i %s -j ACCEPT  \n" , bridgename );
+         // Allow forward within same Amenity network interface
+         fprintf(filter_fp, "-A FORWARD -i %s -o %s -j ACCEPT\n", bridgename, bridgename);
+      }
+   }
+AmenityExit:
+   FIREWALL_DEBUG("Exiting updateAmenityNetworkRules\n");
+
+}
+#endif
 
 /*
  =================================================================
@@ -5436,29 +5510,32 @@ static int do_wan_nat_lan_clients(FILE *fp)
          fprintf(fp, "-A postrouting_towan -s 192.168.0.0/16 -j SNAT --to-source %s\n", natip4);
          fprintf(fp, "-A postrouting_towan -s 172.16.0.0/12 -j SNAT --to-source %s\n", natip4);
 
-#if defined (WIFI_MANAGE_SUPPORTED)
-#define BUFF_LEN_64 64
-#define BUFF_LEN_32 32
-
-         if (true == isManageWiFiEnabled())
+         if (FALSE == bAmenityEnabled)
          {
-             char aParamName[BUFF_LEN_64];
-             char aParamVal[BUFF_LEN_32];
-             char aV4Addr[BUFF_LEN_32];
+            #if defined (WIFI_MANAGE_SUPPORTED)
+            #define BUFF_LEN_64 64
+            #define BUFF_LEN_32 32
 
-             psmGet(bus_handle, MANAGE_WIFI_PSM_STR, aParamVal, sizeof(aParamVal));
-             if ('\0' != aParamVal[0])
-             {
-                 snprintf(aParamName, sizeof(aParamName), MANAGE_WIFI_V4_ADDR, aParamVal);
-                 psmGet(bus_handle,aParamName, aV4Addr, sizeof(aV4Addr));
-                 if ('\0' != aV4Addr[0])
-                 {
+            if (true == isManageWiFiEnabled())
+            {
+               char aParamName[BUFF_LEN_64];
+               char aParamVal[BUFF_LEN_32];
+               char aV4Addr[BUFF_LEN_32];
+
+               psmGet(bus_handle, MANAGE_WIFI_PSM_STR, aParamVal, sizeof(aParamVal));
+               if ('\0' != aParamVal[0])
+               {
+                  snprintf(aParamName, sizeof(aParamName), MANAGE_WIFI_V4_ADDR, aParamVal);
+                  psmGet(bus_handle,aParamName, aV4Addr, sizeof(aV4Addr));
+                  if ('\0' != aV4Addr[0])
+                  {
                      snprintf(aParamName, sizeof(aParamName), "%s/24", aV4Addr);
                      fprintf(fp, "-A postrouting_towan -s %s -j SNAT --to-source %s\n", aParamName, natip4);
-                 }
-             }
+                  }
+               }
+            }
+            #endif /*WIFI_MANAGE_SUPPORTED*/
          }
-#endif /*WIFI_MANAGE_SUPPORTED*/
      }
   }
   else
@@ -12616,9 +12693,18 @@ static int prepare_subtables(FILE *raw_fp, FILE *mangle_fp, FILE *nat_fp, FILE *
       // but dont duplicate
       fprintf(filter_fp, "-A INPUT -i %s -j wan2self\n", default_wan_ifname);
    }
-#if defined (WIFI_MANAGE_SUPPORTED)
-   updateManageWiFiRules(bus_handle, current_wan_ifname, filter_fp);
-#endif /*WIFI_MANAGE_SUPPORTED*/
+   if (FALSE == bAmenityEnabled)
+   {
+      #if defined (WIFI_MANAGE_SUPPORTED)
+      updateManageWiFiRules(bus_handle, current_wan_ifname, filter_fp);
+      #endif /*WIFI_MANAGE_SUPPORTED*/
+   }
+   else
+   {
+      #if defined (AMENITIES_NETWORK_ENABLED)
+      updateAmenityNetworkRules(filter_fp,mangle_fp , AF_INET);
+      #endif
+   }
    //Add wan2self restrictions to other wan interfaces
    //ping is allowed to cm and mta inferfaces regardless the firewall level
 #if !defined(_HUB4_PRODUCT_REQ_)
@@ -14034,16 +14120,19 @@ static int prepare_disabled_ipv4_firewall(FILE *raw_fp, FILE *mangle_fp, FILE *n
    fprintf(filter_fp, ":%s - [0:0]\n", "lan2self_mgmt");
    fprintf(filter_fp, ":%s - [0:0]\n", "xlog_drop_wan2self");
    fprintf(filter_fp, ":%s - [0:0]\n", "xlog_drop_lan2self");
-#if defined (WIFI_MANAGE_SUPPORTED)
-   if (true == isManageWiFiEnabled())
+   if (FALSE == bAmenityEnabled)
    {
-       fprintf(filter_fp, ":%s - [0:0]\n", "lan2self");
-       fprintf(filter_fp, ":%s - [0:0]\n", "lan2self_by_wanip");
-       fprintf(filter_fp, ":%s - [0:0]\n", "lanattack");
-       fprintf(filter_fp, ":%s - [0:0]\n", "xlog_drop_lanattack");
-       do_lan2self(filter_fp);
+      #if defined (WIFI_MANAGE_SUPPORTED)
+      if (true == isManageWiFiEnabled())
+      {
+         fprintf(filter_fp, ":%s - [0:0]\n", "lan2self");
+         fprintf(filter_fp, ":%s - [0:0]\n", "lan2self_by_wanip");
+         fprintf(filter_fp, ":%s - [0:0]\n", "lanattack");
+         fprintf(filter_fp, ":%s - [0:0]\n", "xlog_drop_lanattack");
+         do_lan2self(filter_fp);
+      }
+      #endif /*WIFI_MANAGE_SUPPORTED*/
    }
-#endif /*WIFI_MANAGE_SUPPORTED*/
    //>>DOS
 #ifdef _COSA_INTEL_XB3_ARM_
    fprintf(filter_fp, ":%s - [0:0]\n", "wandosattack");
@@ -14181,9 +14270,18 @@ static int prepare_disabled_ipv4_firewall(FILE *raw_fp, FILE *mangle_fp, FILE *n
    prepare_multinet_disabled_ipv4_firewall(filter_fp);
 #endif
 
-#if defined (WIFI_MANAGE_SUPPORTED)
-   updateManageWiFiRules(bus_handle, current_wan_ifname, filter_fp);
-#endif /*WIFI_MANAGE_SUPPORTED*/
+   if (FALSE == bAmenityEnabled)
+   {
+      #if defined (WIFI_MANAGE_SUPPORTED)
+      updateManageWiFiRules(bus_handle, current_wan_ifname, filter_fp);
+      #endif /*WIFI_MANAGE_SUPPORTED*/
+   }
+   else
+   {
+      #if defined (AMENITIES_NETWORK_ENABLED)
+      updateAmenityNetworkRules(filter_fp,mangle_fp , AF_INET);
+      #endif
+   }
 
    fprintf(filter_fp, "-A INPUT -i %s -j lan2self_mgmt\n", cmdiag_ifname); //lan0 always exist
 
@@ -15907,6 +16005,7 @@ v6GPFirewallRuleNext:
       fprintf(fp, "-A INPUT -i bropen6g -j ACCEPT \n");
       fprintf(fp, "-A INPUT -i brsecure6g -j ACCEPT \n");
 #endif
+
       // Logging and rejecting politely (rate limiting anyway)
       fprintf(fp, "-A INPUT -j LOG_INPUT_DROP \n");
 
@@ -15933,6 +16032,13 @@ v6GPFirewallRuleNext:
 #if defined (_XB8_PRODUCT_REQ_) && defined(RDK_ONEWIFI)
       fprintf(fp, "-A FORWARD -i bropen6g -o bropen6g -j ACCEPT\n");
       fprintf(fp, "-A FORWARD -i brsecure6g -o brsecure6g -j ACCEPT\n");
+#endif
+
+#if defined (AMENITIES_NETWORK_ENABLED)
+      if (TRUE == bAmenityEnabled)
+      {
+         updateAmenityNetworkRules(fp , NULL , AF_INET6 );
+      }
 #endif
 
       // Link local should never be forwarded

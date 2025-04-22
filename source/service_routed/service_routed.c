@@ -1772,9 +1772,16 @@ if(!strncmp(out,"true",strlen(out)))
                 }
                 #else
                         strncpy(interface_name,token,sizeof(interface_name)-1);
-                #endif 
-        	fprintf(fp, "interface %s\n", interface_name);
-        	fprintf(fp, "   no ipv6 nd suppress-ra\n");
+                #endif
+
+        #if defined (AMENITIES_NETWORK_ENABLED)
+        char cAmenityReceived [8] = {0};
+        syscfg_get( NULL, "Is_Amenity_Received", cAmenityReceived, sizeof(cAmenityReceived));
+        if((strncmp(cAmenityReceived, "true",4)) || (strncmp(interface_name, "brlan15", 7) != 0))
+        #endif /*AMENITIES_NETWORK_ENABLED*/
+        {
+        fprintf(fp, "interface %s\n", interface_name);
+        fprintf(fp, "   no ipv6 nd suppress-ra\n");
 
         #ifdef WAN_FAILOVER_SUPPORTED
         if (gIpv6AddrAssignment == ULA_IPV6)
@@ -1915,7 +1922,8 @@ if(!strncmp(out,"true",strlen(out)))
          }
 
 	fprintf(fp, "interface %s\n", interface_name);
-    	fprintf(fp, "   ip irdp multicast\n");
+        }
+	fprintf(fp, "   ip irdp multicast\n");
 	}
 	memset(out,0,sizeof(out));
 }

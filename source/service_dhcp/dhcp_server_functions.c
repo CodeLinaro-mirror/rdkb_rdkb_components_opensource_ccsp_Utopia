@@ -82,6 +82,7 @@
 #define isValidSubnetByte(byte) (((byte == 255) || (byte == 254) || (byte == 252) || \
                                   (byte == 248) || (byte == 240) || (byte == 224) || \
                                   (byte == 192) || (byte == 128)) ? 1 : 0)
+#define BUFF_LEN_8 8
 
 extern int g_iSyseventfd;
 extern token_t g_tSysevent_token;
@@ -1905,19 +1906,25 @@ int prepare_dhcp_conf (char *input)
                         fprintf(g_fArmConsoleLog, "DHCP_SERVER : [brlan113] dhcp-option=brlan113,6,%s\n", l_cWan_Dhcp_Dns);
                 }
 #endif
-#if defined (WIFI_MANAGE_SUPPORTED)
-        #define BUFF_LEN_8 8
-        char aParamVal[BUFF_LEN_8];
-        syscfg_get(NULL, "Manage_WiFi_Enabled", aParamVal, sizeof(aParamVal));
-        if (strcmp(aParamVal, "true") == 0)
+#if defined (AMENITIES_NETWORK_ENABLED)
+        char cAmenityReceived [BUFF_LEN_8] = {0};
+        syscfg_get( NULL, "Is_Amenity_Received", cAmenityReceived, BUFF_LEN_8);
+        if(strncmp(cAmenityReceived , "true",4))
+#endif /*AMENITIES_NETWORK_ENABLED*/
         {
-            psmGet(g_vBus_handle, MANAGE_WIFI_PSM_STR, aParamVal, sizeof(aParamVal));
-            if ('\0' != aParamVal[0])
+            #if defined (WIFI_MANAGE_SUPPORTED)
+            char aParamVal[BUFF_LEN_8];
+            syscfg_get(NULL, "Manage_WiFi_Enabled", aParamVal, sizeof(aParamVal));
+            if (strcmp(aParamVal, "true") == 0)
             {
-                updateDhcpPoolData(g_vBus_handle, aParamVal, l_fLocal_Dhcp_ConfFile);
+                psmGet(g_vBus_handle, MANAGE_WIFI_PSM_STR, aParamVal, sizeof(aParamVal));
+                if ('\0' != aParamVal[0])
+                {
+                    updateDhcpPoolData(g_vBus_handle, aParamVal, l_fLocal_Dhcp_ConfFile);
+                }
             }
+            #endif /*WIFI_MANAGE_SUPPORTED*/
         }
-#endif /*WIFI_MANAGE_SUPPORTED*/
 
 #if defined(_WNXL11BWL_PRODUCT_REQ_) || defined (_SCER11BEL_PRODUCT_REQ_)
         fprintf(l_fLocal_Dhcp_ConfFile, "interface=brlan112\n");
