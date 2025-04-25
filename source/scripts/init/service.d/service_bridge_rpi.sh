@@ -545,7 +545,7 @@ wan_wait ()
    retry=0 
    WAN_INTERFACE=erouter0
    if [ ! -f /tmp/wan_ip_assigned_to_erouter0 ]; then 
-   while [ "30" -ge "$retry" ]
+   while [ "45" -ge "$retry" ]
    do 
        sleep 1
        retry=`expr $retry + 1` 
