@@ -136,6 +136,24 @@ if [ -d $SYSCFG_ENCRYPTED_PATH ]; then
        fi
 fi
 
+if [ "$MODEL_NUM" = "SCER11BEL" ]; then
+     if [ "$ENCRYPT_SYSCFG" = false ]; then
+             if [ ! -f $SYSCFG_BKUP_FILE ] && [ -f $SYSCFG_NEW_FILE ]; then
+                 echo_t "[utopia][init] DOWNGRADE to unsecured syscfg.db"
+                 touch $SYSCFG_BKUP_FILE
+                 cp $SYSCFG_NEW_FILE $SYSCFG_BKUP_FILE
+
+             fi
+
+     else
+              if [ -f $SYSCFG_BKUP_FILE ] && [ ! -f $SYSCFG_NEW_FILE ]; then
+                 echo_t "[utopia][init] UPGRADE to secured syscfg.db"
+                 touch $SYSCFG_NEW_FILE
+                 cp $SYSCFG_BKUP_FILE $SYSCFG_NEW_FILE
+              fi
+     fi
+fi
+
 changeFilePermissions() {
        if [ -e "$1" ]; then
                filepermission=$(stat -c %a "$1")
