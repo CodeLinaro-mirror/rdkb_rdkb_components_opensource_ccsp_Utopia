@@ -1119,9 +1119,6 @@ $dmesglogsync_interval=900
 #ForwardSSH is enabled by default
 $ForwardSSH=true
 
-#mTlsLogUpload is disabled by default.
-$mTlsLogUpload_Enable=false
-
 #UploadLogsOnUnscheduledRebootDisable is disabled by default.
 $UploadLogsOnUnscheduledRebootDisable=false
 
@@ -1246,12 +1243,6 @@ $low_queue_reboot_threshold=0
 $EnableOCSPStapling=false
 $EnableOCSPCA=false
 
-#Use XPKI certificate
-$UseXPKI_Enable=false
-
-#Use XPKI certificate for lnf
-$LnFUseXPKI=false
-
 # Dynamic DNS
 $dynamic_dns_enable=0
 $ddns_service_providers_list=no-ip,dyndns,duckdns,afraid,easydns,changeip
@@ -1293,8 +1284,6 @@ $CollectdEnable=false
 #NTP status default value set to unsynchronized
 $$ntp_status=2
 @ntp_time_sync=0
-#mTlsCrashdump is disabled by default.
-$mTlsCrashdumpUpload_Enable=false
 
 #AutoReboot is enabled by default
 $AutoReboot=true
