@@ -1248,6 +1248,9 @@ fi
                 echo "${PREFIX}""dhcp-option=brlan115,6,$WAN_DHCP_NS" >> $LOCAL_DHCP_CONF
             fi
 
+            if  [ "$BOX_TYPE" == "SCER11BEL" -a "$SelfHealSupport" == "true" ]; then
+                do_static_resolution
+            fi
 
        elif [ "$BOX_TYPE" = "turris" ]; then
            echo "interface=wifi2" >> $LOCAL_DHCP_CONF
