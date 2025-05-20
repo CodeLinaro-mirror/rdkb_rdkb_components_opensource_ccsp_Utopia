@@ -48,7 +48,7 @@ WAN_INTERFACE=$(getWanInterfaceName)
 DEFAULT_WAN_INTERFACE="erouter0"
 LANIPV6Support=`sysevent get LANIPv6GUASupport`
 DEVICETYPE=$(dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Identity.DeviceType | grep value | cut -d ":" -f 3 | tr -d ' ' | tr -s ' ' | tr '[:lower:]' '[:upper:]')
-if [ $DEVICETYPE = "TEST" ]; then
+if [ $DEVICETYPE = "TEST" ] && [ $USE_DYNAMICKEYING = "TRUE" ]; then
     USE_DEVKEYS="-f authorized_keys_dev"
     echo_t "[utopia]: dropbear using dev authorization keys"
 else
