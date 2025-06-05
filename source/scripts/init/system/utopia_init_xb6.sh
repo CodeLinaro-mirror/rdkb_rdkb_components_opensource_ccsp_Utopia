@@ -289,6 +289,12 @@ CheckAndReCreateDB()
 
 echo "[utopia][init] Starting syscfg using file store ($SYSCFG_NEW_FILE)"
 if [ -f $SYSCFG_NEW_FILE ]; then
+        # Check and remove immutable attribute on syscfg.db if set
+        attr_flag=$(lsattr "$SYSCFG_NEW_FILE" 2>/dev/null | awk '{print $1}')
+        if echo "$attr_flag" | grep -q "i"; then
+            echo "[utopia][init] Immutable flag is set on $SYSCFG_NEW_FILE, removing it"
+            chattr -i "$SYSCFG_NEW_FILE"
+        fi
         cp $SYSCFG_NEW_FILE $SYSCFG_FILE
         syscfg_create -f $SYSCFG_FILE
         if [ $? != 0 ]; then
