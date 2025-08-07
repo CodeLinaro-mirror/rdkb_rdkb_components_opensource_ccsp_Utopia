@@ -624,16 +624,20 @@ void do_ipv6_filter_table(FILE *fp){
    }
 #endif
 
+   do_webui_attack_filter(fp);
+
    // Create iptable chain to ratelimit remote management packets
    do_webui_rate_limit(fp);
    // Rate limiting the webui-access lan side
    if(isBridgeMode)
    {
+       wan_lan_webui_attack(fp,cmdiag_ifname);
        lan_access_set_proto(fp, "80",cmdiag_ifname);
        lan_access_set_proto(fp, "443",cmdiag_ifname);
    }
    else
    {
+       wan_lan_webui_attack(fp,lan_ifname);
        lan_access_set_proto(fp, "80",lan_ifname);
        lan_access_set_proto(fp, "443",lan_ifname);
    }
