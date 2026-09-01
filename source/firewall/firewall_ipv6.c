@@ -852,7 +852,7 @@ void do_ipv6_filter_table(FILE *fp){
       fprintf(fp, "-A INPUT -s ff00::/8  -j DROP\n");
      
 #if defined(_COSA_FOR_BCI_) || defined(_ONESTACK_PRODUCT_REQ_)
-      if(isWanPingDisableV6 == 1)
+      if (isWanPingDisableV6 == 1 || isPingBlockedV6 == 1)
       {
              syscfg_get(NULL, "wanIPv6Address", wanIPv6, sizeof(wanIPv6));
              if(0 != strcmp(wanIPv6,""))
