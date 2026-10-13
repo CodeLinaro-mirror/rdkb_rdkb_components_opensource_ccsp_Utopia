@@ -2196,7 +2196,7 @@ if (conf) {
         return -1;
     }
 
-    char *conf = read_file_alloc(ZEBRA_CONF_FILE);
+    conf = read_file_alloc(ZEBRA_CONF_FILE);
 if (conf) {
     ROUTED_LOG("%s: zebra.conf:\n%s\n", __FUNCTION__, conf);
     free(conf);
@@ -2218,11 +2218,6 @@ if (conf) {
         {
             ROUTED_LOG("%s: For sky, zebra pid stop \n", __FUNCTION__);
             kill(pid, SIGUSR1);
-            char *conf = read_file_alloc(ZEBRA_CONF_FILE);
-            if (conf) {
-                ROUTED_LOG("%s: zebra.conf:\n%s\n", __FUNCTION__, conf);
-                free(conf);
-            }
             return 0;
         }
 //#endif
