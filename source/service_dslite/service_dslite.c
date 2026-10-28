@@ -327,7 +327,9 @@ static int dslite_start (struct serv_dslite *sd)
     char val[64];
     char buf[128];
     char DSLITE_AFTR[256];
-    char dslite_tnl_ipv4[32];
+    //utopia-develop_High_024
+    char dslite_tnl_ipv4[32] = {0};
+    char dslite_tnl_ipv4_canonical[INET_ADDRSTRLEN];
     char dslite_tnl_ipv6[64];
     char resolved_ipv6[64] = {0};
     char gw_ipv6[64];
@@ -366,6 +368,22 @@ static int dslite_start (struct serv_dslite *sd)
         fprintf(fp_dslt_dbg, "%s: DSLite is already started, exit without doing anything !\n", __FUNCTION__);
         SEM_POST;
         return 0;
+    }
+
+    syscfg_get (NULL, "dslite_tunnel_v4addr_1", dslite_tnl_ipv4, sizeof(dslite_tnl_ipv4));
+    if (dslite_tnl_ipv4[0] != '\0')
+    {
+        struct in_addr tunnel_v4addr;
+
+        if (inet_pton (AF_INET, dslite_tnl_ipv4, &tunnel_v4addr) != 1 ||
+            inet_ntop (AF_INET, &tunnel_v4addr, dslite_tnl_ipv4_canonical,
+                       sizeof(dslite_tnl_ipv4_canonical)) == NULL)
+        {
+            sysevent_set (sd->sefd, sd->setok, "dslite_service-status", "error", 0);
+            fprintf (fp_dslt_dbg, "%s: Invalid DSLite tunnel IPv4 address\n", __FUNCTION__);
+            SEM_POST;
+            return 1;
+        }
     }
 
     /* get the WAN side IPv6 global address */
@@ -492,14 +510,13 @@ static int dslite_start (struct serv_dslite *sd)
     //Enabling AutoConf for ip4ip6 interface
     sysctl_iface_set ("/proc/sys/net/ipv6/conf/%s/autoconf", TNL_NETDEVNAME, "1");
 
-    syscfg_get (NULL, "dslite_tunnel_v4addr_1", dslite_tnl_ipv4, sizeof(dslite_tnl_ipv4));
     if (dslite_tnl_ipv4[0] != 0)
     {
         vsystem ("ip link set dev " TNL_NETDEVNAME " txqueuelen 1000 up" "; "   // Activate tunnel
                  "ip -6 addr add %s dev " TNL_NETDEVNAME "; "                   // Set IPv6 address to tunnel interface
                  "ip addr add %s dev " TNL_NETDEVNAME "; "                      // Set IPv4 address to tunnel interface
                  "ip -4 addr flush " ER_NETDEVNAME,                             // Clear the GW IPv4 address (in case of IPv4 address not released successfully)
-                 dslite_tnl_ipv6, dslite_tnl_ipv4);
+                 dslite_tnl_ipv6, dslite_tnl_ipv4_canonical);
     }
     else
     {

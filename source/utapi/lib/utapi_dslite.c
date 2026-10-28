@@ -14,6 +14,8 @@
 # limitations under the License.
 #####################################################################*/
 #ifdef DSLITE_FEATURE_SUPPORT
+//utopia-develop_High_024
+#include <arpa/inet.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +30,16 @@
 #include "safec_lib_common.h"
 
 static int g_IndexMapDslite[MAX_NUM_INSTANCES+1] = {-1};
+
+static int dslite_tunnel_v4addr_valid(const char *addr, size_t size)
+{
+    struct in_addr parsed_addr;
+
+    if (addr == NULL || memchr(addr, '\0', size) == NULL)
+        return 0;
+
+    return addr[0] == '\0' || inet_pton(AF_INET, addr, &parsed_addr) == 1;
+}
 
 int Utopia_GetDsliteEnable(UtopiaContext *ctx, boolean_t *bEnabled)
 {
@@ -124,6 +136,10 @@ int Utopia_SetDsliteCfg(UtopiaContext *ctx,DsLiteCfg_t *pDsliteCfg)
     if(0 == DsLiteCfg_tmp.InstanceNumber)
         return ERR_INVALID_ARGS;
 
+    if (!dslite_tunnel_v4addr_valid(DsLiteCfg_tmp.tunnel_v4addr,
+                                    sizeof(DsLiteCfg_tmp.tunnel_v4addr)))
+        return ERR_INVALID_ARGS;
+
     ulIndex = g_IndexMapDslite[DsLiteCfg_tmp.InstanceNumber];
     Utopia_SetDsliteByIndex(ctx,ulIndex,&DsLiteCfg_tmp);
     return SUCCESS;
@@ -148,12 +164,40 @@ int Utopia_AddDsliteEntry(UtopiaContext *ctx, DsLiteCfg_t *pDsliteCfg)
     if(0 == DsLiteCfg_tmp.InstanceNumber)
         return ERR_INVALID_ARGS;
 
+    if (!dslite_tunnel_v4addr_valid(DsLiteCfg_tmp.tunnel_v4addr,
+                                    sizeof(DsLiteCfg_tmp.tunnel_v4addr)))
+        return ERR_INVALID_ARGS;
+
     Utopia_GetNumOfDsliteEntries(ctx,&count);
     ulIndex = count;
     g_IndexMapDslite[DsLiteCfg_tmp.InstanceNumber] = ulIndex;
     Utopia_SetIndexedInt(ctx, UtopiaValue_Dslite_InsNum, (ulIndex + 1) ,DsLiteCfg_tmp.InstanceNumber);
     Utopia_SetDsliteByIndex(ctx,ulIndex,&DsLiteCfg_tmp);
     Utopia_SetNumOfDsliteEntries(ctx,(count + 1));
+
+    return SUCCESS;
+}
+
+static int dslite_store_by_index(UtopiaContext *ctx, unsigned long ulIndex,
+                                 DsLiteCfg_t *pDsLiteCfg_t)
+{
+    if ((NULL == ctx) || (NULL == pDsLiteCfg_t))
+        return ERR_INVALID_ARGS;
+
+#ifdef _DEBUG_
+    ulog_errorf(ULOG_CONFIG, UL_UTAPI, "%s: ********Entered ****** !!!", __FUNCTION__);
+#endif
+
+    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Active,(ulIndex + 1),pDsLiteCfg_t->active);
+    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Alias,(ulIndex + 1), pDsLiteCfg_t->alias);
+    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Mode,(ulIndex + 1),pDsLiteCfg_t->mode);
+    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Addr_Type,(ulIndex + 1),pDsLiteCfg_t->addr_type);
+    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Addr_Fqdn,(ulIndex + 1), pDsLiteCfg_t->addr_fqdn);
+    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Addr_IPv6,(ulIndex + 1), pDsLiteCfg_t->addr_ipv6);
+    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Mss_Clamping_Enable,(ulIndex + 1),pDsLiteCfg_t->mss_clamping_enable);
+    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Tcpmss,(ulIndex + 1),pDsLiteCfg_t->tcpmss);
+    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_IPv6_Frag_Enable,(ulIndex + 1),pDsLiteCfg_t->ipv6_frag_enable);
+    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Tunnel_V4Addr,(ulIndex + 1), pDsLiteCfg_t->tunnel_v4addr);
 
     return SUCCESS;
 }
@@ -191,7 +235,7 @@ int Utopia_DelDsliteEntry(UtopiaContext *ctx, unsigned long ulInstanceNumber)
 
           g_IndexMapDslite[dsliteCfg.InstanceNumber] = (ulIndex - 1);
 
-          Utopia_SetDsliteByIndex(ctx,(ulIndex - 1),&dsliteCfg);
+          dslite_store_by_index(ctx,(ulIndex - 1),&dsliteCfg);
         }
         /* Now unset the last index */
         Utopia_UnsetIndexed(ctx,UtopiaValue_Dslite_InsNum,ulIndex);
@@ -280,22 +324,11 @@ int Utopia_GetDsliteByIndex(UtopiaContext *ctx, unsigned long ulIndex, DsLiteCfg
 
 int Utopia_SetDsliteByIndex(UtopiaContext *ctx, unsigned long ulIndex, DsLiteCfg_t *pDsLiteCfg_t)
 {
+    if ((NULL == pDsLiteCfg_t) ||
+        !dslite_tunnel_v4addr_valid(pDsLiteCfg_t->tunnel_v4addr,
+                                    sizeof(pDsLiteCfg_t->tunnel_v4addr)))
+        return ERR_INVALID_ARGS;
 
-#ifdef _DEBUG_
-    ulog_errorf(ULOG_CONFIG, UL_UTAPI, "%s: ********Entered ****** !!!", __FUNCTION__);
-#endif
-
-    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Active,(ulIndex + 1),pDsLiteCfg_t->active);
-    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Alias,(ulIndex + 1), pDsLiteCfg_t->alias);
-    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Mode,(ulIndex + 1),pDsLiteCfg_t->mode);
-    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Addr_Type,(ulIndex + 1),pDsLiteCfg_t->addr_type);
-    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Addr_Fqdn,(ulIndex + 1), pDsLiteCfg_t->addr_fqdn);
-    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Addr_IPv6,(ulIndex + 1), pDsLiteCfg_t->addr_ipv6);
-    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Mss_Clamping_Enable,(ulIndex + 1),pDsLiteCfg_t->mss_clamping_enable);
-    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_Tcpmss,(ulIndex + 1),pDsLiteCfg_t->tcpmss);
-    Utopia_SetIndexedInt(ctx,UtopiaValue_Dslite_IPv6_Frag_Enable,(ulIndex + 1),pDsLiteCfg_t->ipv6_frag_enable);
-    Utopia_SetIndexed(ctx,UtopiaValue_Dslite_Tunnel_V4Addr,(ulIndex + 1), pDsLiteCfg_t->tunnel_v4addr);
-
-    return SUCCESS;
+    return dslite_store_by_index(ctx, ulIndex, pDsLiteCfg_t);
 }
 #endif
