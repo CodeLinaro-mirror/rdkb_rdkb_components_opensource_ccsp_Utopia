@@ -38,6 +38,7 @@
 #include "time.h"
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"
+#include "firewall.h"
 
 #define PROG_NAME       "SERVICE-DSLITE"
 #define ER_NETDEVNAME   "erouter0"
@@ -77,6 +78,44 @@ static int dslite_start (struct serv_dslite *sd);
 static int dslite_stop (struct serv_dslite *sd);
 static int dslite_restart (struct serv_dslite *sd);
 static int dslite_clear_status (struct serv_dslite *sd);
+
+static int is_valid_dslite_tunnel_ipv4 (char *address)
+{
+    char ipv4_address[INET_ADDRSTRLEN];
+    const char *slash = strchr (address, '/');
+    size_t address_len;
+    unsigned int prefix = 0;
+    const char *digit;
+
+    if (slash == NULL)
+        return IsValidIPv4Addr (address);
+
+    if (slash == address || strchr (slash + 1, '/') != NULL || slash[1] == '\0')
+        return 0;
+
+    address_len = (size_t)(slash - address);
+    if (address_len >= sizeof (ipv4_address))
+        return 0;
+
+    memcpy (ipv4_address, address, address_len);
+    ipv4_address[address_len] = '\0';
+
+    for (digit = slash + 1; *digit != '\0'; digit++)
+    {
+        unsigned int value;
+
+        if (*digit < '0' || *digit > '9')
+            return 0;
+
+        value = (unsigned int)(*digit - '0');
+        if (prefix > 3 || (prefix == 3 && value > 2))
+            return 0;
+
+        prefix = prefix * 10 + value;
+    }
+
+    return IsValidIPv4Addr (ipv4_address);
+}
 
 static const struct cmd_op cmd_ops[] = {
     {"start",   dslite_start,        "start service dslite"   },
@@ -327,7 +366,8 @@ static int dslite_start (struct serv_dslite *sd)
     char val[64];
     char buf[128];
     char DSLITE_AFTR[256];
-    char dslite_tnl_ipv4[32];
+    //utopia-develop_High_024
+    char dslite_tnl_ipv4[32] = {0};
     char dslite_tnl_ipv6[64];
     char resolved_ipv6[64] = {0};
     char gw_ipv6[64];
@@ -480,6 +520,15 @@ static int dslite_start (struct serv_dslite *sd)
         return 1;
     }
 
+    syscfg_get (NULL, "dslite_tunnel_v4addr_1", dslite_tnl_ipv4, sizeof(dslite_tnl_ipv4));
+    if (dslite_tnl_ipv4[0] != '\0' && !is_valid_dslite_tunnel_ipv4 (dslite_tnl_ipv4))
+    {
+        sysevent_set (sd->sefd, sd->setok, "dslite_service-status", "error", 0);
+        fprintf (fp_dslt_dbg, "%s: Invalid DSLite tunnel IPv4 address\n", __FUNCTION__);
+        SEM_POST;
+        return 1;
+    }
+
     //Stop WAN IPv4 service
     route_deconfig (sd);
     wan_dhcp_stop();
@@ -492,7 +541,6 @@ static int dslite_start (struct serv_dslite *sd)
     //Enabling AutoConf for ip4ip6 interface
     sysctl_iface_set ("/proc/sys/net/ipv6/conf/%s/autoconf", TNL_NETDEVNAME, "1");
 
-    syscfg_get (NULL, "dslite_tunnel_v4addr_1", dslite_tnl_ipv4, sizeof(dslite_tnl_ipv4));
     if (dslite_tnl_ipv4[0] != 0)
     {
         vsystem ("ip link set dev " TNL_NETDEVNAME " txqueuelen 1000 up" "; "   // Activate tunnel
