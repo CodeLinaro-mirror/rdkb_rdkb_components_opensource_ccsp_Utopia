@@ -982,6 +982,25 @@ int IsValidInterfaceName(const char *if_name, size_t length)
    return 1;
 }
 
+//utopia-develop_High_003
+static int is_valid_blocked_site_host(const char *host)
+{
+    const unsigned char *p;
+
+    if (host == NULL || *host == '\0')
+        return 0;
+
+    for (p = (const unsigned char *)host; *p != '\0'; ++p)
+    {
+        if (isalnum(*p) || *p == '.' || *p == '-' || *p == ':' || *p == '[' || *p == ']')
+            continue;
+
+        return 0;
+    }
+
+    return 1;
+}
+
 
 #ifdef FEATURE_464XLAT
 void do_xlat_rule(FILE *nat_fp)
@@ -1025,6 +1044,24 @@ int IsValidIPv4Addr(char* ip_addr_string)
     }
 
     return ret;
+}
+
+//utopia-develop_High_001
+static int is_valid_general_firewall_rule(char *rule)
+{
+   size_t len = strlen(rule);
+
+   while (len > 0 && (('\r' == rule[len - 1]) || ('\n' == rule[len - 1]))) {
+      rule[--len] = '\0';
+   }
+
+   while ('\0' != *rule) {
+      if (('\r' == *rule) || ('\n' == *rule)) {
+         return 0;
+      }
+      rule++;
+   }
+   return 1;
 }
 
 #if defined(FEATURE_MAPT) || defined(FEATURE_SUPPORT_MAPT_NAT46)
@@ -9581,6 +9618,13 @@ static int do_parcon_mgmt_site_keywd(FILE *fp, FILE *nat_fp, int iptype, FILE *c
                 char *urlStart = query + host_name_offset;
                 int pos = 0, len = strlen(urlStart);
 
+		//utopia-develop_High_003
+                if (!is_valid_blocked_site_host(query + host_name_offset))
+                {
+                    FIREWALL_DEBUG("Rejecting invalid managed site host\n");
+                    continue;
+                }
+
                 if(*urlStart == '[')
                     urlType = IPv6_URL;
                 else
@@ -11052,7 +11096,9 @@ static int do_filter_table_general_rules(FILE *fp)
           * for runtime/configuration values
           */
          char str[MAX_QUERY];
-         if (NULL != make_substitutions(in_rule, subst, sizeof(subst))) {
+	 //utopia-develop_High_001
+         if (NULL != make_substitutions(in_rule, subst, sizeof(subst)) &&
+             is_valid_general_firewall_rule(subst)) {
             if ((1 == substitute(subst, str, sizeof(str), "INPUT", "general_input")) ||
                 (1 == substitute(subst, str, sizeof(str), "OUTPUT", "general_output")) ||
                 (1 == substitute(subst, str, sizeof(str), "FORWARD", "general_forward")) ) {
@@ -11082,7 +11128,9 @@ GPFirewallRuleNext:
           * for runtime/configuration values
           */
          char str[MAX_QUERY];
-         if (NULL != make_substitutions(rule, subst, sizeof(subst))) {
+	 //utopia-develop_High_001
+         if (NULL != make_substitutions(rule, subst, sizeof(subst)) &&
+             is_valid_general_firewall_rule(subst)) {
             if ((1 == substitute(subst, str, sizeof(str), "INPUT", "general_input"))   ||
                (1 == substitute(subst, str, sizeof(str), "OUTPUT", "general_output"))  ||
                (1 == substitute(subst, str, sizeof(str), "FORWARD", "general_forward")) ) {
